@@ -1,0 +1,8 @@
+namespace AlumniManagementSystem.Shared;
+public class AuthResponseDto{
+  public string Token { get; set; } = string.Empty;
+  public string Role  { get; set; } = string.Empty;
+  public Guid UserId  { get; set; }
+  public Guid AlumniId  { get; set; }
+  public string FullName  { get; set; } = string.Empty;
+}

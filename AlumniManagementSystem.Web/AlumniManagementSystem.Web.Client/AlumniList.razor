@@ -1,0 +1,59 @@
+@page "/alumnis"
+@inject HttpClient Http
+@using AlumniManagementSystem.Shared
+
+<h3>Registered Alumni</h3>
+
+@if (alumnis == null)
+{
+    <p>Loading data from API...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Roll Number</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Email</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var student in alumnis)
+            {
+                <tr>
+                    <td>@student.RollNumber</td>
+                    <td>@student.FirstName</td>
+                    <td>@student.LastName</td>
+                    <td>@student.Email</td>
+                    
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => EditStudent(student.Id)">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    // This holds the data we get from the API
+    private List<AlumniDto>? alumnis;
+
+    // When the webpage loads, it calls your API's GET method!
+    protected override async Task OnInitializedAsync()
+    {
+        alumnis = await Http.GetFromJsonAsync<List<AlumniDto>>("api/alumni");
+    }
+
+    // When the user clicks the Edit button, the computer uses the hidden ID
+    private void EditStudent(Guid id)
+    {
+        // Example: Navigate to /edit-student/08de9c86-1b67-4623...
+        Console.WriteLine($"Now editing student with ID: {id}");
+    }
+}

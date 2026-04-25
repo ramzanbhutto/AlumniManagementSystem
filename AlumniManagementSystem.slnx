@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/AlumniManagementSystem.Web/">
+    <Project Path="AlumniManagementSystem.Web/AlumniManagementSystem.Web.Client/AlumniManagementSystem.Web.Client.csproj" />
+    <Project Path="AlumniManagementSystem.Web/AlumniManagementSystem.Web/AlumniManagementSystem.Web.csproj" />
+  </Folder>
+  <Project Path="AlumniManagementSystem.Api/AlumniManagementSystem.Api.csproj" />
+  <Project Path="AlumniManagementSystem.Application/AlumniManagementSystem.Application.csproj" />
+  <Project Path="AlumniManagementSystem.Domain/AlumniManagementSystem.Domain.csproj" />
+  <Project Path="AlumniManagementSystem.Infrastructure/AlumniManagementSystem.Infrastructure.csproj" />
+  <Project Path="AlumniManagementSystem.Shared/AlumniManagementSystem.Shared.csproj" />
+</Solution>

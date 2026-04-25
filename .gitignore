@@ -1,0 +1,71 @@
+# Build outputs 
+[Oo]bj/
+[Bb]in/
+out/
+publish/
+
+# Secrets & config
+appsettings.json
+appsettings.*.json
+!appsettings.Development.json.example
+*.env
+.env
+.env.*
+secrets.json
+**/secrets.json
+
+# EF Core
+# Keep migrations, exclude compiled snapshots
+**/Migrations/*Designer.cs
+
+# .NET tooling
+*.user
+*.suo
+*.userosscache
+*.sln.docview
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Rider / JetBrains
+.idea/
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Logs
+*.log
+logs/
+LogFiles/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Blazor WASM
+wwwroot/css/bootstrap/
+wwwroot/_framework/
+dist/
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Temporary
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
