@@ -1,0 +1,35 @@
+@inject NavigationManager Nav
+
+@{
+    var currentPath = new Uri(Nav.Uri).AbsolutePath;
+    var isActive = currentPath.TrimEnd('/') == Href.TrimEnd('/') ||
+                   (Href != "/dashboard" && currentPath.StartsWith(Href, StringComparison.OrdinalIgnoreCase));
+    var bgColor = isActive ? (IsAdmin ? "#fff7ed" : "#eff6ff") : "transparent";
+    var textColor = isActive ? (IsAdmin ? "#ea580c" : "#3b82f6") : "#475569";
+    var iconColor = isActive ? (IsAdmin ? "#ea580c" : "#3b82f6") : "#94a3b8";
+    var fontWeight = isActive ? "600" : "500";
+    var borderLeft = isActive ? $"3px solid {(IsAdmin ? "#ea580c" : "#3b82f6")}" : "3px solid transparent";
+}
+
+<a href="@Href" style="text-decoration:none;display:block;margin-bottom:2px">
+    <div style="display:flex;align-items:center;gap:9px;padding:0.52rem 0.75rem;border-radius:8px;cursor:pointer;transition:all 0.13s;background:@bgColor;border-left:@borderLeft"
+         class="ams-nav-item">
+        <MudIcon Icon="@Icon" Style="@($"font-size:1.05rem;color:{iconColor};flex-shrink:0;transition:color 0.13s")" />
+        <span style="@($"font-size:0.845rem;font-weight:{fontWeight};color:{textColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color 0.13s")">
+            @Label
+        </span>
+    </div>
+</a>
+
+<style>
+    .ams-nav-item:hover {
+        background: #f1f5f9 !important;
+    }
+</style>
+
+@code {
+    [Parameter] public string Href  { get; set; } = "/";
+    [Parameter] public string Icon  { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public bool IsAdmin { get; set; } = false;
+}

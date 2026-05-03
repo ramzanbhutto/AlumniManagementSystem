@@ -1,0 +1,149 @@
+@inherits LayoutComponentBase
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<MudThemeProvider Theme="_theme" IsDarkMode="false" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@if(!Auth.IsLoggedIn){
+  @Body
+}
+else{
+    <MudLayout>
+        <MudAppBar Elevation="0" Dense="true" Color="Color.Surface"
+                   Style="border-bottom:1px solid #e8edf3;background:#ffffff;z-index:1201">
+            <MudStack Row="true" AlignItems="AlignItems.Center"
+                      Justify="Justify.SpaceBetween" Style="width:100%;padding:0 0.75rem">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIconButton Icon="@Icons.Material.Rounded.Menu"
+                                   OnClick="@(() => _drawerOpen = !_drawerOpen)"
+                                   Color="Color.Default" Size="Size.Small"
+                                   Style="color:#64748b" />
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <div style="width:28px;height:28px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:7px;display:flex;align-items:center;justify-content:center">
+                            <span style="color:white;font-size:0.75rem;font-weight:800">A</span>
+                        </div>
+                        <span style="font-weight:700;color:#0f172a;letter-spacing:-0.02em;font-size:0.95rem">AlumniMS</span>
+                        <span style="background:#eff6ff;color:#3b82f6;font-size:0.6rem;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:0.04em">FAST-NUCES</span>
+                    </div>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <div style="text-align:right">
+                        <div style="font-size:0.8rem;font-weight:600;color:#0f172a;line-height:1.2">@Auth.FullName</div>
+                        <div style="font-size:0.68rem;color:#94a3b8;font-weight:500">@Auth.Role</div>
+                    </div>
+                    <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;color:white;flex-shrink:0">
+                        @(Auth.FullName?.Length > 0 ? Auth.FullName[0].ToString().ToUpper() : "U")
+                    </div>
+                </MudStack>
+            </MudStack>
+        </MudAppBar>
+
+        <MudDrawer @bind-Open="_drawerOpen" Variant="@DrawerVariant.Responsive"
+                   Elevation="0" ClipMode="DrawerClipMode.Always" Color="Color.Surface"
+                   Style="border-right:1px solid #e8edf3;background:#ffffff">
+            <div style="padding:1rem 0.75rem 0.5rem;overflow-y:auto;height:calc(100vh - 48px);display:flex;flex-direction:column">
+
+                <div style="margin-bottom:0.25rem">
+                    <div style="padding:0 0.5rem;margin-bottom:0.5rem">
+                        <span style="font-size:0.62rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em">Main</span>
+                    </div>
+                    <SideNavItem Href="/dashboard" Icon="@Icons.Material.Rounded.GridView" Label="Dashboard" />
+                    <SideNavItem Href="/alumni" Icon="@Icons.Material.Rounded.People" Label="Alumni Directory" />
+                    <SideNavItem Href="/events" Icon="@Icons.Material.Rounded.CalendarMonth" Label="Events" />
+                    <SideNavItem Href="/jobs" Icon="@Icons.Material.Rounded.WorkOutline" Label="Job Board" />
+                </div>
+
+                <div style="margin-top:0.75rem;margin-bottom:0.25rem">
+                    <div style="padding:0 0.5rem;margin-bottom:0.5rem">
+                        <span style="font-size:0.62rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em">My Account</span>
+                    </div>
+                    <SideNavItem Href="/profile" Icon="@Icons.Material.Rounded.PersonOutline" Label="My Profile" />
+                    <SideNavItem Href="/messages" Icon="@Icons.Material.Rounded.MailOutline" Label="Messages" />
+                    <SideNavItem Href="/donations" Icon="@Icons.Material.Rounded.FavoriteBorder" Label="Donations" />
+                    <SideNavItem Href="/surveys" Icon="@Icons.Material.Rounded.Poll" Label="Surveys" />
+                    <SideNavItem Href="/newsletters" Icon="@Icons.Material.Rounded.MarkEmailRead" Label="Newsletters" />
+                </div>
+
+                @if(Auth.IsAdmin){
+                    <div style="margin-top:0.75rem;margin-bottom:0.25rem">
+                        <div style="padding:0 0.5rem;margin-bottom:0.5rem">
+                            <span style="font-size:0.62rem;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:0.08em">&#9654; Admin</span>
+                        </div>
+                        <SideNavItem Href="/admin/reports" Icon="@Icons.Material.Rounded.InsertChart" Label="Reports" IsAdmin="true" />
+                        <SideNavItem Href="/admin/newsletter" Icon="@Icons.Material.Rounded.Campaign" Label="Newsletter Mgmt" IsAdmin="true" />
+                        <SideNavItem Href="/admin/departments" Icon="@Icons.Material.Rounded.AccountTree" Label="Departments" IsAdmin="true" />
+                    </div>
+                }
+
+                <div style="flex:1"></div>
+
+                <div style="padding-top:0.75rem;border-top:1px solid #f1f5f9;margin-top:0.5rem">
+                    <div @onclick="LogoutAsync"
+                         style="display:flex;align-items:center;gap:10px;padding:0.6rem 0.75rem;border-radius:8px;cursor:pointer;transition:all 0.15s"
+                         class="ams-logout-btn">
+                        <MudIcon Icon="@Icons.Material.Rounded.Logout" Style="font-size:1.1rem;color:#ef4444" />
+                        <span style="font-size:0.85rem;font-weight:600;color:#ef4444">Sign Out</span>
+                    </div>
+                </div>
+            </div>
+        </MudDrawer>
+
+        <MudMainContent Style="padding-top:48px;background:#f8fafc;min-height:100vh">
+            <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4 pa-md-6">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+}
+
+@code {
+    private bool _drawerOpen = true;
+
+    private readonly MudTheme _theme = new(){
+        PaletteLight = new PaletteLight
+        {
+            Primary        = "#3b82f6",
+            Secondary      = "#6366f1",
+            Background     = "#f8fafc",
+            Surface        = "#ffffff",
+            DrawerBackground = "#ffffff",
+            AppbarBackground = "#ffffff",
+            AppbarText     = "#0f172a",
+            TextPrimary    = "#0f172a",
+            TextSecondary  = "#64748b",
+            ActionDefault  = "#64748b",
+            DrawerText     = "#334155",
+            Divider        = "#e8edf3",
+            TableLines     = "#e8edf3",
+            LinesDefault   = "#e8edf3",
+            Success        = "#10b981",
+            Warning        = "#f59e0b",
+            Error          = "#ef4444",
+            Info           = "#3b82f6",
+        },
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["DM Sans", "system-ui", "sans-serif"]
+            }
+        },
+        LayoutProperties = new LayoutProperties { DrawerWidthLeft = "232px" }
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        Auth.OnAuthChanged += StateHasChanged;
+        if(!Auth.IsLoggedIn) Nav.NavigateTo("/login", forceLoad: false);
+        StateHasChanged();
+    }
+
+    private async Task LogoutAsync(){
+        await Auth.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+}

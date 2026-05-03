@@ -1,0 +1,145 @@
+@page "/newsletters"
+@rendermode InteractiveWebAssembly
+@inject HttpClient Http
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Newsletters</PageTitle>
+
+<MudStack Spacing="4">
+
+    @* Header *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:700;letter-spacing:-0.02em;color:#111827">Newsletters</MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280">
+                @(_loading ? "Loading..." : $"{_newsletters.Count} newsletter(s) for you")
+            </MudText>
+        </div>
+        <MudIcon Icon="@Icons.Material.Rounded.MarkEmailRead"
+                 Style="font-size:2.2rem;color:#2563eb;opacity:0.35" />
+    </MudStack>
+
+    @* Loading *@
+    @if(_loading){
+        <MudStack Spacing="3">
+            @for(int i = 0; i < 3; i++){
+                <MudSkeleton Height="140px" Animation="Animation.Wave" Style="border-radius:14px" />
+            }
+        </MudStack>
+    }
+
+    @* Empty *@
+    else if(!_newsletters.Any()){
+        <MudPaper Elevation="0"
+                  Style="background:#f0f4ff;border:1px solid #c7d7fe;border-radius:16px;padding:3.5rem 2rem;text-align:center">
+            <div style="width:64px;height:64px;background:#e0e7ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+                <MudIcon Icon="@Icons.Material.Rounded.Email"
+                         Style="font-size:2rem;color:#4f46e5" />
+            </div>
+            <MudText Typo="Typo.subtitle1" Style="font-weight:700;color:#111827;margin-bottom:0.25rem">
+                No newsletters yet
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280;max-width:320px;margin:0 auto">
+                Your admin hasn't published any newsletters for your audience yet. Check back later!
+            </MudText>
+        </MudPaper>
+    }
+
+    @* Newsletter cards *@
+    else{
+        <MudStack Spacing="3">
+            @foreach(var n in _newsletters){
+                <MudPaper Elevation="0" Class="nl-card"
+                          Style="background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;transition:all 0.2s">
+
+                    @* Colored top accent bar based on TargetRole *@
+                    <div style="height:4px;background:@GetAccentColor(n.TargetRole)"></div>
+
+                    <div style="padding:1.4rem">
+                        <MudStack Spacing="2">
+
+                            @* Title + audience chip *@
+                            <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.subtitle1"
+                                         Style="font-weight:700;color:#111827;line-height:1.35;flex:1;margin-right:0.75rem">
+                                    @n.Title
+                                </MudText>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                         Style="@($"background:{GetChipBg(n.TargetRole)};color:{GetChipFg(n.TargetRole)};font-size:0.67rem;height:22px;font-weight:700;flex-shrink:0;border-radius:6px")">
+                                    @n.TargetRole
+                                </MudChip>
+                            </MudStack>
+
+                            @* Sent date *@
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Rounded.Schedule"
+                                         Style="font-size:0.8rem;color:#9ca3af" />
+                                <MudText Typo="Typo.caption" Style="color:#78909C;font-weight:500">
+                                    @(n.SentAt.HasValue
+                                        ? $"Sent {n.SentAt.Value:MMMM d, yyyy}"
+                                        : $"Published {n.CreatedAt:MMMM d, yyyy}")
+                                </MudText>
+                            </MudStack>
+
+                            <MudDivider Style="border-color:#f3f4f6" />
+
+                            @* Content *@
+                            <MudText Typo="Typo.body2"
+                                     Style="color:#374151;white-space:pre-wrap;line-height:1.7">
+                                @n.Content
+                            </MudText>
+
+                        </MudStack>
+                    </div>
+
+                </MudPaper>
+            }
+        </MudStack>
+    }
+
+</MudStack>
+
+<style>
+    .nl-card:hover {
+        border-color: #a5b4fc !important;
+        box-shadow: 0 6px 24px rgba(99,102,241,0.10);
+        transform: translateY(-2px);
+    }
+</style>
+
+@code {
+    private List<NewsletterDto> _newsletters = [];
+    private bool _loading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login"); return; }
+        try{ _newsletters = await Http.GetFromJsonAsync<List<NewsletterDto>>("api/newsletter/my") ?? []; }
+        catch{ }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    // accent gradient bar color per audience
+    private string GetAccentColor(string role) => role switch{
+        "Alumni" => "linear-gradient(90deg,#6366f1,#8b5cf6)",
+        "Guest"  => "linear-gradient(90deg,#0ea5e9,#06b6d4)",
+        _ => "linear-gradient(90deg,#10b981,#059669)"
+    };
+
+    // chip background
+    private string GetChipBg(string role) => role switch{
+        "Alumni" => "#ede9fe",
+        "Guest"  => "#e0f2fe",
+        _ => "#d1fae5"
+    };
+
+    // chip text color
+    private string GetChipFg(string role) => role switch{
+        "Alumni" => "#6d28d9",
+        "Guest"  => "#0369a1",
+        _ => "#065f46"
+    };
+}

@@ -1,0 +1,260 @@
+@page "/admin/newsletter"
+@rendermode InteractiveWebAssembly
+@inject HttpClient Http
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Newsletter</PageTitle>
+
+<MudStack Spacing="4">
+
+    @* ── Header ── *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-wrap">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:700;letter-spacing:-0.02em;color:#111827">Newsletter</MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280">
+                @(_loading ? "Loading..." : $"{_newsletters.Count} newsletter(s) total")
+            </MudText>
+        </div>
+        @if(Auth.IsAdmin){
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Rounded.Add"
+                       OnClick="@(() => _showCreate = true)"
+                       Style="border-radius:10px;font-weight:600;text-transform:none;padding:0.5rem 1.25rem">
+                Create Newsletter
+            </MudButton>
+        }
+    </MudStack>
+
+    @* ── States ── *@
+    @if(_notAdmin){
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Style="border-radius:12px">
+            Admin access required.
+        </MudAlert>
+    }
+    else if(_loading){
+        <MudStack Spacing="3">
+            @for(int i = 0; i < 3; i++){
+                <MudSkeleton Height="110px" Animation="Animation.Wave" Style="border-radius:14px" />
+            }
+        </MudStack>
+    }
+    else if(!_newsletters.Any()){
+        <MudPaper Elevation="0"
+                  Style="background:#f0f4ff;border:1px solid #c7d7fe;border-radius:16px;padding:3.5rem 2rem;text-align:center">
+            <div style="width:64px;height:64px;background:#e0e7ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+                <MudIcon Icon="@Icons.Material.Rounded.Email" Style="font-size:2rem;color:#4f46e5" />
+            </div>
+            <MudText Typo="Typo.subtitle1" Style="font-weight:700;color:#111827;margin-bottom:0.25rem">
+                No newsletters yet
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280">
+                Create your first newsletter and send it to your audience.
+            </MudText>
+        </MudPaper>
+    }
+    else{
+        <MudStack Spacing="3">
+            @foreach(var n in _newsletters){
+                <MudPaper Elevation="0" Class="nl-admin-card"
+                          Style="background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;transition:all 0.2s">
+
+                    @* Top accent — green if Sent, amber if Draft *@
+                    <div style="height:4px;background:@(n.Status == "Sent" ? "linear-gradient(90deg,#10b981,#059669)" : "linear-gradient(90deg,#f59e0b,#d97706)")"></div>
+
+                    <div style="padding:1.25rem 1.4rem">
+                        <MudStack Row="true" AlignItems="AlignItems.Start"
+                                  Justify="Justify.SpaceBetween" Class="flex-wrap gap-2">
+
+                            @* Left: info *@
+                            <div style="flex:1;min-width:0">
+                                @* Title + chips *@
+                                <MudStack Row="true" AlignItems="AlignItems.Center"
+                                          Spacing="2" Class="mb-1 flex-wrap">
+                                    <MudText Typo="Typo.subtitle2"
+                                             Style="font-weight:700;color:#111827;font-size:0.95rem">
+                                        @n.Title
+                                    </MudText>
+
+                                    @* Status chip *@
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                             Style="@(n.Status == "Sent"
+                                                 ? "background:#d1fae5;color:#065f46;font-size:0.67rem;height:21px;font-weight:700;border-radius:6px"
+                                                 : "background:#fef3c7;color:#92400e;font-size:0.67rem;height:21px;font-weight:700;border-radius:6px")">
+                                        @(n.Status == "Sent" ? "✓ Sent" : "⏳ Draft")
+                                    </MudChip>
+
+                                    @* Audience chip *@
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                             Style="@GetAudienceChipStyle(n.TargetRole)">
+                                        @n.TargetRole
+                                    </MudChip>
+                                </MudStack>
+
+                                @* Created date *@
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Rounded.CalendarToday"
+                                             Style="font-size:0.78rem;color:#9ca3af" />
+                                    <MudText Typo="Typo.caption" Style="color:#9ca3af;font-weight:500">
+                                        Created @n.CreatedAt.ToString("MMMM d, yyyy")
+                                    </MudText>
+                                </MudStack>
+                            </div>
+
+                            @* Right: Send button for drafts *@
+                            @if(n.Status == "Draft"){
+                                <MudButton Size="Size.Small" Variant="Variant.Filled"
+                                           Style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border-radius:8px;text-transform:none;font-weight:600;font-size:0.78rem;padding:0.3rem 0.9rem;align-self:center;flex-shrink:0;box-shadow:0 2px 8px rgba(16,185,129,0.25)"
+                                           OnClick="@(() => SendAsync(n.NewsletterId))">
+                                    <MudIcon Icon="@Icons.Material.Rounded.Send"
+                                             Style="font-size:0.85rem;margin-right:4px" />
+                                    Send to Audience
+                                </MudButton>
+                            }
+                            else{
+                                <div style="align-self:center;flex-shrink:0">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIcon Icon="@Icons.Material.Rounded.CheckCircle"
+                                                 Style="font-size:1rem;color:#10b981" />
+                                        <MudText Typo="Typo.caption"
+                                                 Style="color:#10b981;font-weight:600">
+                                            Delivered
+                                        </MudText>
+                                    </MudStack>
+                                </div>
+                            }
+
+                        </MudStack>
+                    </div>
+
+                </MudPaper>
+            }
+        </MudStack>
+    }
+
+</MudStack>
+
+@* create newsletter dialog *@
+@if(_showCreate){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0"
+                  Style="background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:2rem;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.14)">
+
+            @* Dialog header *@
+            <MudStack Row="true" AlignItems="AlignItems.Center"
+                      Justify="Justify.SpaceBetween" Class="mb-1">
+                <div>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;color:#111827">
+                        Create Newsletter
+                    </MudText>
+                    <MudText Typo="Typo.caption" Style="color:#6b7280">
+                        Compose and choose your audience before sending
+                    </MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small"
+                               OnClick="@(() => _showCreate = false)" />
+            </MudStack>
+
+            <MudDivider Class="mb-4 mt-2" />
+
+            <MudStack Spacing="3">
+
+                <MudTextField @bind-Value="_dto.Title" Label="Newsletter Title"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Required="true" RequiredError="Title is required" />
+
+                <NativeSelect Label="Target Audience" Value="@_dto.TargetRole"
+                              ValueChanged="@((string? v) => _dto.TargetRole = v ?? "All")"
+                              BgColor="#f9fafb">
+                    <option value="All">🌐 All Users</option>
+                    <option value="Alumni">🎓 Alumni Only</option>
+                    <option value="Guest">👤 Guests Only</option>
+                </NativeSelect>
+
+                <MudTextField @bind-Value="_dto.Content" Label="Content"
+                              Variant="Variant.Outlined" Lines="8" Margin="Margin.Dense"
+                              Required="true" RequiredError="Content is required"
+                              Placeholder="Write your newsletter content here..." />
+
+                <MudDivider />
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Text" Color="Color.Default"
+                               OnClick="@(() => _showCreate = false)"
+                               Style="text-transform:none;font-weight:600">
+                        Cancel
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="CreateAsync" Disabled="_saving"
+                               Style="border-radius:8px;text-transform:none;font-weight:600;padding:0.5rem 1.5rem">
+                        @if(_saving){
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Save as Draft
+                    </MudButton>
+                </MudStack>
+
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+<style>
+    .nl-admin-card:hover {
+        border-color: #a5b4fc !important;
+        box-shadow: 0 6px 24px rgba(99,102,241,0.10);
+        transform: translateY(-2px);
+    }
+</style>
+
+@code {
+    private List<NewsletterDto> _newsletters = [];
+    private bool _loading = true, _notAdmin = false, _showCreate = false, _saving = false;
+    private CreateNewsletterDto _dto = new() { TargetRole = "All" };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login", forceLoad: true); return; }
+        if(!Auth.IsAdmin){ _notAdmin = true; _loading = false; StateHasChanged(); return; }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync(){
+        try{ _newsletters = await Http.GetFromJsonAsync<List<NewsletterDto>>("api/newsletter") ?? []; }
+        catch{ _newsletters = []; }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private async Task CreateAsync(){
+        if(string.IsNullOrWhiteSpace(_dto.Title) || string.IsNullOrWhiteSpace(_dto.Content)){
+            Snackbar.Add("Title and content are required", Severity.Warning);
+            return;
+        }
+        _saving = true;
+        var r = await Http.PostAsJsonAsync("api/newsletter", _dto);
+        _saving = false;
+        if(r.IsSuccessStatusCode){
+            Snackbar.Add("Newsletter created!", Severity.Success);
+            _showCreate = false;
+            _dto = new() { TargetRole = "All" };
+            await LoadAsync();
+        }
+        else Snackbar.Add("Failed to create newsletter", Severity.Error);
+    }
+
+    private async Task SendAsync(Guid id){
+        var r = await Http.PostAsync($"api/newsletter/{id}/send", null);
+        if(r.IsSuccessStatusCode){ Snackbar.Add("Newsletter sent!", Severity.Success); await LoadAsync(); }
+        else Snackbar.Add("Failed to send", Severity.Error);
+    }
+
+    private string GetAudienceChipStyle(string role) => role switch{
+        "Alumni" => "background:#ede9fe;color:#6d28d9;font-size:0.67rem;height:21px;font-weight:700;border-radius:6px",
+        "Guest"  => "background:#e0f2fe;color:#0369a1;font-size:0.67rem;height:21px;font-weight:700;border-radius:6px",
+        _  => "background:#d1fae5;color:#065f46;font-size:0.67rem;height:21px;font-weight:700;border-radius:6px"
+    };
+}

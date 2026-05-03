@@ -61,4 +61,17 @@ public class MessagesController : ControllerBase{
       SentAt = m.SentAt,
       IsRead = m.IsRead,
     };
+
+   // PATCH: api/messages/{id}/read
+   [HttpPatch("{id:guid}/read")]
+   public async Task<IActionResult> MarkAsRead(Guid id){
+     var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+     var msg = await _repo.GetByIdAsync(id);
+     if(msg is null) return NotFound();
+     if(msg.ReceiverId != userId) return Forbid(); // can only mark your own messages
+     if(msg.IsRead) return NoContent();            // already read, nothing to do
+     msg.IsRead = true;
+     await _repo.SaveChangesAsync();
+     return NoContent();
+  }
 }

@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="AlumniManagementSystem.Web.Client/AlumniManagementSystem.Web.Client.csproj" />
+  <Project Path="AlumniManagementSystem.Web/AlumniManagementSystem.Web.csproj" />
+</Solution>

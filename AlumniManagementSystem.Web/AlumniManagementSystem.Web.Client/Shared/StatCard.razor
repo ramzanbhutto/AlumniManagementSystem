@@ -1,0 +1,28 @@
+@* Usage: <StatCard Icon="..." Label="..." Value="..." Color="..." Bg="..." /> *@
+
+<MudPaper Elevation="0"
+          Style="@($"background:#13161e;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:1.25rem;transition:0.18s;cursor:default")"
+          Class="stat-card-hover">
+    <div style="@($"width:36px;height:36px;border-radius:8px;background:{Bg};display:flex;align-items:center;justify-content:center;margin-bottom:0.75rem")">
+        <MudIcon Icon="@Icon" Style="@($"color:{Color};font-size:1.1rem")" />
+    </div>
+    <MudText Style="@($"font-size:1.6rem;font-weight:600;color:#e8eaf0;line-height:1;margin-bottom:0.2rem;font-variant-numeric:tabular-nums")">
+        @Value
+    </MudText>
+    <MudText Typo="Typo.caption" Style="color:#6b7280;font-weight:450">@Label</MudText>
+</MudPaper>
+
+<style>
+    .stat-card-hover:hover {
+        border-color: rgba(255,255,255,0.12) !important;
+        transform: translateY(-1px);
+    }
+</style>
+
+@code {
+    [Parameter] public string Icon  { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Color { get; set; } = "#4f8ef7";
+    [Parameter] public string Bg    { get; set; } = "rgba(79,142,247,0.1)";
+}

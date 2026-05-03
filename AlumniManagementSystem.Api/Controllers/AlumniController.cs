@@ -94,4 +94,39 @@ public class AlumniController : ControllerBase{
       DepartmentName = a.Program?.Department?.Name,
       DepartmentCode = a.Program?.Department?.Code,
     };
+
+   // GET: api/alumni/id/{id}
+   [HttpGet("id/{id:guid}")]
+   public async Task<ActionResult<AlumniDto>> GetById(Guid id){
+     var a = await _svc.GetByIdAsync(id);
+     return a is null ? NotFound() : Ok(Map(a));
+    }
+
+    // PUT: api/alumni/{id}/profile
+   [HttpPut("{id:guid}/profile")]
+    public async Task<IActionResult> UpdateProfile(Guid id, UpdateAlumniDto dto){
+      var a = await _svc.GetByIdAsync(id);
+      if(a is null) return NotFound();
+      a.FirstName= dto.FirstName;
+      a.LastName= dto.LastName;
+      a.Email = dto.Email;
+      if(dto.RollNumber != null) a.RollNumber = dto.RollNumber;
+      a.Phone = dto.Phone;
+      if(!string.IsNullOrEmpty(dto.Gender) && Enum.TryParse<AlumniManagementSystem.Domain.Enums.Gender>(dto.Gender, out var g)) a.Gender = g;
+      if(DateOnly.TryParse(dto.DateOfBirth, out var dob)) a.DateOfBirth = dob;
+      a.BatchYear = dto.BatchYear;
+      a.GraduationYear= dto.GraduationYear;
+      a.City= dto.City;
+      a.Country = dto.Country;
+      a.CurrentJobTitle = dto.CurrentJobTitle;
+      a.CurrentCompany= dto.CurrentCompany;
+      a.LinkedInUrl= dto.LinkedInUrl;
+      a.ProfilePicUrl= dto.ProfilePicUrl;
+      a.IsProfileComplete = !string.IsNullOrEmpty(dto.Phone)
+                       && !string.IsNullOrEmpty(dto.City)
+                       && !string.IsNullOrEmpty(dto.CurrentJobTitle);
+      await _svc.UpdateAsync(a);
+      return NoContent();
+    }
+
 }

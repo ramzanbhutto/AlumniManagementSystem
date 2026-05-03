@@ -120,7 +120,12 @@ builder.Services.AddSwaggerGen(c =>
 // CORS
 builder.Services.AddCors(opt =>
     opt.AddDefaultPolicy(p =>
-        p.WithOrigins("https://localhost:7001", "http://localhost:5001")
+        p.WithOrigins(
+          "http://localhost:5193",  // blazor http
+          "https://localhost:7295",   // blazor https
+          "http://localhost:5016",
+          "https://localhost:7001"
+          )
          .AllowAnyHeader()
          .AllowAnyMethod()));
 

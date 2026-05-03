@@ -37,17 +37,22 @@ public class AuthController : ControllerBase{
       };
     await _ctx.Users.AddAsync(user);
  
-    var alumni = new Alumni
-      {
-        AlumniId= Guid.NewGuid(),
-        UserId= user.UserId,
-        RollNumber= dto.RollNumber,
-        FirstName= dto.FirstName,
-        LastName= dto.LastName,
-        Email= dto.Email,
-        ProgramId= dto.ProgramId,
-        GraduationYear= dto.GraduationYear,
-      };
+    var programId = dto.ProgramId != Guid.Empty && _ctx.Programs.Any(p => p.ProgramId == dto.ProgramId) ? dto.ProgramId : _ctx.Programs.Select(p => p.ProgramId).FirstOrDefault();
+
+    if(programId == Guid.Empty)
+      return BadRequest("No academic programs exist. Ask admin to create one first.");
+
+    var alumni = new Alumni
+    {
+      AlumniId= Guid.NewGuid(),
+      UserId= user.UserId,
+      RollNumber= dto.RollNumber,
+      FirstName= dto.FirstName,
+      LastName= dto.LastName,
+      Email= dto.Email,
+      ProgramId= programId,
+      GraduationYear= dto.GraduationYear,
+    };
     await _ctx.Alumnis.AddAsync(alumni);
     await _ctx.SaveChangesAsync();
  

@@ -1,0 +1,31 @@
+@inject NavigationManager Nav
+
+<a href="@Href" style="text-decoration:none">
+    <div class="nav-tile" style="@($"background:{Bg};border:1px solid rgba(0,0,0,0.04);border-radius:{(IsSmall ? "9px" : "12px")};padding:{(IsSmall ? "0.6rem 0.7rem" : "0.85rem")};display:flex;align-items:center;gap:{(IsSmall ? "7px" : "10px")};transition:all 0.15s;cursor:pointer")">
+        <div style="@($"width:{(IsSmall ? "28px" : "34px")};height:{(IsSmall ? "28px" : "34px")};background:{IconColor}22;border-radius:{(IsSmall ? "7px" : "9px")};display:flex;align-items:center;justify-content:center;flex-shrink:0")">
+            <MudIcon Icon="@Icon" Style="@($"font-size:{(IsSmall ? "0.85rem" : "1rem")};color:{IconColor}")" />
+        </div>
+        <div style="min-width:0">
+            <div style="@($"font-size:{(IsSmall ? "0.75rem" : "0.82rem")};font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")">@Label</div>
+            <div style="font-size:0.68rem;color:#94a3b8;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@Sub</div>
+        </div>
+    </div>
+</a>
+
+<style>
+    .nav-tile:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06) !important;
+        filter: brightness(0.97);
+    }
+</style>
+
+@code {
+    [Parameter] public string Href      { get; set; } = "/";
+    [Parameter] public string Icon      { get; set; } = "";
+    [Parameter] public string Label     { get; set; } = "";
+    [Parameter] public string Sub       { get; set; } = "";
+    [Parameter] public string Bg        { get; set; } = "#f1f5f9";
+    [Parameter] public string IconColor { get; set; } = "#64748b";
+    [Parameter] public bool   IsSmall   { get; set; } = false;
+}

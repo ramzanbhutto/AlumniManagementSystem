@@ -1,0 +1,124 @@
+@page "/admin/reports"
+@rendermode InteractiveWebAssembly
+@inject DashboardApiService DashSvc
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Reports</PageTitle>
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.h5" Style="font-weight:600;letter-spacing:-0.02em">Reports & Analytics</MudText>
+
+    @if(_notAdmin){
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Style="border-radius:12px">
+            Admin access required.
+        </MudAlert>
+    }
+    else if(_loading){
+        <MudSkeleton Height="300px" Animation="Animation.Wave" Style="border-radius:12px" />
+    }
+    else{
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Style="background:#BDBDBD;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:1.5rem">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;margin-bottom:1rem">Alumni by Department</MudText>
+                    @foreach(var d in _byDept){
+                        var total = _byDept.Sum(x => x.Count);
+                        var pct   = total > 0 ? (double)d.Count / total * 100 : 0;
+                        <MudStack Spacing="1" Class="mb-3">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.body2" Style="color:#111827">@d.Department</MudText>
+                                <MudText Typo="Typo.caption" Style="color:#111827">@d.Count alumni</MudText>
+                            </MudStack>
+                            <MudProgressLinear Value="@pct" Color="Color.Primary" Rounded="true" Size="Size.Small" />
+                        </MudStack>
+                    }
+                    @if(!_byDept.Any()){
+                        <MudText Style="color:#111827">No data yet</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Style="background:#BDBDBD;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:1.5rem">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;margin-bottom:1rem">Alumni by Graduation Year</MudText>
+                    @if(_byYear.Any()){
+                        var maxCount = _byYear.Max(y => y.Count);
+                        @foreach(var y in _byYear.OrderBy(x => x.Year)){
+                            var pct = maxCount > 0 ? (double)y.Count / maxCount * 100 : 0;
+                            <MudStack Spacing="1" Class="mb-3">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.body2" Style="color:#111827">Class of @(y.Year?.ToString() ?? "Unknown")</MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#111827">@y.Count</MudText>
+                                </MudStack>
+                                <MudProgressLinear Value="@pct" Color="Color.Success" Rounded="true" Size="Size.Small" />
+                            </MudStack>
+                        }
+                    }
+                    else{
+                        <MudText Style="color:#111827">No data yet</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            @if(_stats!=null){
+                <MudItem xs="12">
+                    <MudPaper Elevation="0" Style="background:#BDBDBD;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:1.5rem">
+                        <MudText Typo="Typo.subtitle2" Style="font-weight:600;margin-bottom:1rem">System Summary</MudText>
+                        <MudGrid Spacing="3">
+                            <MudItem xs="6" sm="3">
+                                <div style="text-align:center">
+                                    <MudText Style="font-size:2rem;font-weight:600;color:#4f8ef7">@_stats.TotalAlumni</MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#111827">Total Alumni</MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <div style="text-align:center">
+                                    <MudText Style="font-size:2rem;font-weight:600;color:#34d399">@_stats.ProfilesComplete</MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#111827">Complete Profiles</MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <div style="text-align:center">
+                                    <MudText Style="font-size:2rem;font-weight:600;color:#fbbf24">@_stats.ActiveJobs</MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#111827">Active Jobs</MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <div style="text-align:center">
+                                    <MudText Style="font-size:2rem;font-weight:600;color:#f87171">PKR @_stats.TotalDonations.ToString("N0")</MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#111827">Total Donated</MudText>
+                                </div>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudStack>
+
+@code {
+    private DashboardStatsDto? _stats   = null;
+    private List<YearCountDto> _byYear  = [];
+    private List<DeptCountDto> _byDept  = [];
+    private bool _loading = true;
+    private bool _notAdmin = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+      if(!firstRender) return;
+      await Auth.InitAsync();
+      if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login", forceLoad: true); return; }
+      if(!Auth.IsAdmin){ _notAdmin = true; _loading = false; StateHasChanged(); return; }
+
+      var s= DashSvc.GetStatsAsync();
+      var y= DashSvc.GetAlumniByYearAsync();
+      var d= DashSvc.GetAlumniByDeptAsync();
+      await Task.WhenAll(s, y, d);
+      _stats= await s;
+      _byYear= await y;
+      _byDept= await d;
+      _loading= false;
+      StateHasChanged();
+    }
+}

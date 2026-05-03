@@ -1,0 +1,686 @@
+@page "/surveys"
+@rendermode InteractiveWebAssembly
+@inject NavigationManager Nav
+@inject HttpClient Http
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+
+<PageTitle>Surveys</PageTitle>
+
+<MudStack Spacing="4">
+
+    @* Header *@
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-wrap">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:700;letter-spacing:-0.02em;color:#111827">Surveys</MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280">
+                @if(Auth.IsAdmin){ @($"{_surveys.Count} surveys total") }
+                else { @($"{_surveys.Count} active surveys") }
+            </MudText>
+        </div>
+        @if(Auth.IsAdmin){
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Rounded.Add"
+                       OnClick="@(() => _showCreate = true)"
+                       Style="border-radius:10px;font-weight:600;text-transform:none;padding:0.5rem 1.25rem">
+                Create Survey
+            </MudButton>
+        }
+    </MudStack>
+
+    @* Loading *@
+    @if(_loading){
+        <MudGrid Spacing="3">
+            @for(int i = 0; i < 4; i++){
+                <MudItem xs="12" sm="6">
+                    <MudSkeleton Height="160px" Animation="Animation.Wave" Style="border-radius:14px" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    @* Empty state *@
+    else if(!_surveys.Any()){
+        <MudPaper Elevation="0" Style="background:#f0f4ff;border:1px solid #c7d7fe;border-radius:16px;padding:3.5rem 2rem;text-align:center">
+            <div style="width:64px;height:64px;background:#e0e7ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+                <MudIcon Icon="@Icons.Material.Rounded.Poll" Style="font-size:2rem;color:#4f46e5" />
+            </div>
+            <MudText Typo="Typo.subtitle1" Style="font-weight:700;color:#111827;margin-bottom:0.25rem">No surveys yet</MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280">
+                @(Auth.IsAdmin ? "Create the first survey using the button above." : "Check back later for active surveys.")
+            </MudText>
+        </MudPaper>
+    }
+
+    @* Survey cards *@
+    else{
+        <MudGrid Spacing="3">
+            @foreach(var s in _surveys){
+                <MudItem xs="12" sm="6">
+                    <MudPaper Elevation="0" Class="survey-card"
+                              Style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;height:100%;transition:all 0.18s">
+
+                        @* Accent bar *@
+                        <div style="height:4px;background:@(s.Status=="Active" ? "linear-gradient(90deg,#6366f1,#8b5cf6)" : "linear-gradient(90deg,#9ca3af,#6b7280)")"></div>
+
+                        <div style="padding:1.4rem">
+                            <MudStack Spacing="2" Style="height:100%">
+
+                                @* Title + status *@
+                                <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.subtitle1"
+                                             Style="font-weight:700;color:#111827;line-height:1.3;flex:1;margin-right:0.5rem">
+                                        @s.Title
+                                    </MudText>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                             Style="@(s.Status=="Active"
+                                                 ? "background:#ede9fe;color:#6d28d9;font-size:0.67rem;height:21px;font-weight:700;border-radius:6px;flex-shrink:0"
+                                                 : "background:#f3f4f6;color:#6b7280;font-size:0.67rem;height:21px;font-weight:700;border-radius:6px;flex-shrink:0")">
+                                        @s.Status
+                                    </MudChip>
+                                </MudStack>
+
+                                @* Description *@
+                                @if(s.Description != null){
+                                    <MudText Typo="Typo.body2" Style="color:#6b7280">@s.Description</MudText>
+                                }
+
+                                @* Meta *@
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Style="margin-top:auto;padding-top:0.5rem" Class="flex-wrap">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIcon Icon="@Icons.Material.Rounded.HelpOutline" Style="font-size:0.85rem;color:#9ca3af" />
+                                        <MudText Typo="Typo.caption" Style="color:#6b7280;font-weight:500">@s.Questions.Count questions</MudText>
+                                    </MudStack>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIcon Icon="@Icons.Material.Rounded.People" Style="font-size:0.85rem;color:#9ca3af" />
+                                        @if(Auth.IsAdmin){
+                                           <MudText Typo="Typo.caption" Style="color:#6b7280;font-weight:500">@s.ResponseCount responses</MudText>
+                                        }
+                                    </MudStack>
+                                    @if(s.Deadline.HasValue){
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                            <MudIcon Icon="@Icons.Material.Rounded.Schedule" Style="font-size:0.85rem;color:#d97706" />
+                                            <MudText Typo="Typo.caption" Style="color:#d97706;font-weight:500">Due @s.Deadline.Value.ToString("MMM d")</MudText>
+                                        </MudStack>
+                                    }
+                                </MudStack>
+
+                                <MudDivider Style="border-color:#f3f4f6" />
+
+                                @* Action row *@
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+
+                                    @* Alumni: take survey *@
+                                    @if(!Auth.IsAdmin){
+                                        @if(s.Status == "Active" && !_responded.Contains(s.SurveyId)){
+                                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       Style="border-radius:8px;text-transform:none;font-weight:600"
+                                                       OnClick="@(() => OpenSurvey(s))">
+                                                Take Survey →
+                                            </MudButton>
+                                        }
+                                        else if(_responded.Contains(s.SurveyId)){
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success"
+                                                     Variant="Variant.Filled"
+                                                     Style="font-size:0.72rem;height:24px;font-weight:600">
+                                                ✓ Submitted
+                                            </MudChip>
+                                        }
+                                        else{
+                                            <MudText Typo="Typo.caption" Style="color:#9ca3af">Survey closed</MudText>
+                                        }
+                                    }
+
+                                    @* Admin: manage + VIEW RESPONSES *@
+                                    @if(Auth.IsAdmin){
+                                        <MudStack Row="true" Spacing="1">
+                                            @* View Responses button *@
+                                            <MudButton Size="Size.Small" Variant="Variant.Filled"
+                                                       Style="background:#4f46e5;color:#fff;border-radius:7px;text-transform:none;font-size:0.75rem;font-weight:600"
+                                                       StartIcon="@Icons.Material.Rounded.BarChart"
+                                                       OnClick="@(() => ViewResponsesAsync(s))">
+                                                Responses (@s.ResponseCount)
+                                            </MudButton>
+
+                                            @if(s.Status == "Active"){
+                                                <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                                           Color="Color.Warning"
+                                                           Style="border-radius:7px;text-transform:none;font-size:0.75rem"
+                                                           OnClick="@(() => CloseSurveyAsync(s.SurveyId))">
+                                                    Close
+                                                </MudButton>
+                                            }
+                                            <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                                       Color="Color.Error"
+                                                       Style="border-radius:7px;text-transform:none;font-size:0.75rem"
+                                                       OnClick="@(() => AskDelete(s))">
+                                                Delete
+                                            </MudButton>
+                                        </MudStack>
+                                    }
+                                </MudStack>
+
+                            </MudStack>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+</MudStack>
+
+@* VIEW RESPONSES PANEL (Admin) *@
+@if(_showResponses && _viewingSurvey != null){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0"
+                  Style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;width:100%;max-width:720px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+
+            @* Header *@
+            <div style="padding:1.5rem 1.75rem 1rem;border-bottom:1px solid #f3f4f6;flex-shrink:0">
+                <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:700;color:#111827">
+                            Responses — @_viewingSurvey.Title
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="color:#6b7280">
+                            @_responses.Count response(s) collected
+                        </MudText>
+                    </div>
+                    <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small"
+                                   OnClick="CloseResponses" />
+                </MudStack>
+            </div>
+
+            @* Body — scrollable *@
+            <div style="overflow-y:auto;flex:1;padding:1.25rem 1.75rem">
+
+                @if(_responsesLoading){
+                    <MudStack Spacing="2">
+                        @for(int i = 0; i < 3; i++){
+                            <MudSkeleton Height="120px" Animation="Animation.Wave" Style="border-radius:10px" />
+                        }
+                    </MudStack>
+                }
+                else if(!_responses.Any()){
+                    <div style="text-align:center;padding:3rem 1rem">
+                        <MudIcon Icon="@Icons.Material.Rounded.Inbox"
+                                 Style="font-size:3rem;color:#d1d5db;margin-bottom:0.75rem" />
+                        <MudText Typo="Typo.body1" Style="font-weight:600;color:#374151">No responses yet</MudText>
+                        <MudText Typo="Typo.body2" Style="color:#9ca3af;margin-top:0.25rem">
+                            Alumni haven't submitted this survey yet.
+                        </MudText>
+                    </div>
+                }
+                else{
+                    <MudStack Spacing="3">
+                        @foreach(var (resp, idx) in _responses.Select((r,i) => (r,i))){
+                            <MudPaper Elevation="0"
+                                      Style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+
+                                @* Respondent header *@
+                                <div style="background:#f0f4ff;border-bottom:1px solid #e5e7eb;padding:0.75rem 1rem">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudAvatar Style="width:30px;height:30px;background:#4f46e5;font-size:0.75rem;font-weight:700;color:#fff">
+                                                @(resp.AlumniName.Length > 0 ? resp.AlumniName[0].ToString().ToUpper() : "?")
+                                            </MudAvatar>
+                                            <div>
+                                                <MudText Typo="Typo.body2" Style="font-weight:700;color:#111827;line-height:1.2">
+                                                    @resp.AlumniName
+                                                </MudText>
+                                                <MudText Typo="Typo.caption" Style="color:#6b7280">
+                                                    @resp.AlumniRoll
+                                                </MudText>
+                                            </div>
+                                        </MudStack>
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                            <MudIcon Icon="@Icons.Material.Rounded.AccessTime"
+                                                     Style="font-size:0.78rem;color:#9ca3af" />
+                                            <MudText Typo="Typo.caption" Style="color:#9ca3af">
+                                                @resp.SubmittedAt.ToLocalTime().ToString("MMM d, yyyy · h:mm tt")
+                                            </MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                </div>
+
+                                @* Answers *@
+                                <div style="padding:1rem">
+                                    <MudStack Spacing="2">
+                                        @foreach(var (ans, qi) in resp.Answers.Select((a,i) => (a,i))){
+                                            <div style="border-left:3px solid @GetAnswerAccent(ans.QuestionType);padding:0.4rem 0.75rem">
+                                                <MudText Typo="Typo.caption"
+                                                         Style="color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.03em">
+                                                    Q@(qi+1) · @ans.QuestionType
+                                                </MudText>
+                                                <MudText Typo="Typo.body2" Style="color:#374151;font-weight:500;margin-top:0.15rem">
+                                                    @ans.QuestionText
+                                                </MudText>
+                                                <MudText Typo="Typo.body2"
+                                                         Style="color:#111827;font-weight:700;margin-top:0.2rem">
+                                                    @if(ans.QuestionType == "Rating"){
+                                                        @("★ " + ans.AnswerText + " / 5")
+                                                    }
+                                                    else{
+                                                        @ans.AnswerText
+                                                    }
+                                                </MudText>
+                                            </div>
+                                        }
+                                    </MudStack>
+                                </div>
+
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+            </div>
+
+        </MudPaper>
+    </div>
+}
+
+@* CREATE SURVEY DIALOG (Admin) *@
+@if(_showCreate && Auth.IsAdmin){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0"
+                  Style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;padding:2rem;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-1">
+                <div>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;color:#111827">Create Survey</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#6b7280">Add questions below, then publish</MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small" OnClick="CancelCreate" />
+            </MudStack>
+
+            <MudDivider Class="mb-3 mt-2" />
+
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_newSurvey.Title" Label="Survey Title"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Required="true" RequiredError="Title is required" />
+
+                <MudTextField @bind-Value="_newSurvey.Description" Label="Description (optional)"
+                              Variant="Variant.Outlined" Lines="2" Margin="Margin.Dense" />
+
+                <div>
+                    <label style="display:block;font-size:0.75rem;color:#6b7280;margin-bottom:4px;font-weight:500">
+                        Deadline (optional)
+                    </label>
+                    <input type="date"
+                           value="@_newDeadline?.ToString("yyyy-MM-dd")"
+                           @onchange="@((ChangeEventArgs ev) => _newDeadline = DateTime.TryParse(ev.Value?.ToString(), out var d) ? d : null)"
+                           style="width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;font-size:0.875rem;color:#111827;font-family:inherit;outline:none;height:38px;box-sizing:border-box" />
+                </div>
+
+                <MudDivider />
+
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;color:#111827">
+                        Questions (@_newQuestions.Count)
+                    </MudText>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Rounded.Add"
+                               OnClick="AddQuestion"
+                               Style="border-radius:7px;text-transform:none;font-weight:600">
+                        Add Question
+                    </MudButton>
+                </MudStack>
+
+                @if(!_newQuestions.Any()){
+                    <MudPaper Elevation="0"
+                              Style="background:#f9fafb;border:1px dashed #d1d5db;border-radius:10px;padding:1.5rem;text-align:center">
+                        <MudText Typo="Typo.body2" Style="color:#9ca3af">
+                            No questions yet. Click "Add Question" to start.
+                        </MudText>
+                    </MudPaper>
+                }
+
+                @for(int qi = 0; qi < _newQuestions.Count; qi++){
+                    var idx = qi;
+                    var q   = _newQuestions[idx];
+                    <MudPaper Elevation="0"
+                              Style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:1rem">
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.caption" Style="color:#6b7280;font-weight:600">Q@(idx + 1)</MudText>
+                                <MudIconButton Icon="@Icons.Material.Rounded.DeleteOutline"
+                                               Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => RemoveQuestion(idx))" />
+                            </MudStack>
+                            <MudTextField @bind-Value="q.QuestionText"
+                                          Label="Question text"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            <NativeSelect Label="Question Type" Value="@q.QuestionType" BgColor="#f9fafb"
+                                          ValueChanged="@((string? v) => q.QuestionType = v ?? "Text")">
+                                <option value="Text">Text (open answer)</option>
+                                <option value="MCQ">MCQ (Agree/Disagree scale)</option>
+                                <option value="Rating">Rating (1–5 stars)</option>
+                            </NativeSelect>
+                        </MudStack>
+                    </MudPaper>
+                }
+
+                <MudDivider />
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Text" OnClick="CancelCreate" Style="text-transform:none">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="CreateSurveyAsync" Disabled="_saving"
+                               Style="border-radius:8px;text-transform:none;font-weight:600">
+                        @if(_saving){
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Publish Survey
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@* TAKE SURVEY DIALOG (Alumni/Guest) *@
+@if(_activeSurvey != null){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0"
+                  Style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;padding:2rem;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-1">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:700;color:#111827">
+                    @_activeSurvey.Title
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small"
+                               OnClick="@(() => _activeSurvey = null)" />
+            </MudStack>
+            @if(_activeSurvey.Description != null){
+                <MudText Typo="Typo.body2" Style="color:#6b7280;margin-bottom:1.25rem">
+                    @_activeSurvey.Description
+                </MudText>
+            }
+
+            <MudStack Spacing="4">
+                @foreach(var q in _activeSurvey.Questions.OrderBy(x => x.OrderIndex)){
+                    <MudPaper Elevation="0"
+                              Style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:1rem">
+                        <MudText Typo="Typo.body2"
+                                 Style="font-weight:600;color:#111827;margin-bottom:0.75rem">
+                            @(q.OrderIndex + 1). @q.QuestionText
+                        </MudText>
+
+                        @if(q.QuestionType == "Rating"){
+                            <MudSlider @bind-Value="_answers[q.QuestionId]"
+                                       Min="1" Max="5" Step="1" Color="Color.Primary" />
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <MudText Typo="Typo.caption" Style="color:#9ca3af">1 – Poor</MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled"
+                                         Style="font-size:0.72rem;height:22px;font-weight:700">
+                                    @_answers[q.QuestionId] / 5
+                                </MudChip>
+                                <MudText Typo="Typo.caption" Style="color:#9ca3af">5 – Excellent</MudText>
+                            </MudStack>
+                        }
+                        else if(q.QuestionType == "MCQ"){
+                            <NativeSelect Label="Your answer" Value="@_textAnswers[q.QuestionId]" BgColor="#f9fafb"
+                                          ValueChanged="@((string? v) => _textAnswers[q.QuestionId] = v ?? "")">
+                                <option value="">Select an option</option>
+                                <option value="Strongly Agree">Strongly Agree</option>
+                                <option value="Agree">Agree</option>
+                                <option value="Neutral">Neutral</option>
+                                <option value="Disagree">Disagree</option>
+                                <option value="Strongly Disagree">Strongly Disagree</option>
+                            </NativeSelect>
+                        }
+                        else{
+                            <MudTextField @bind-Value="_textAnswers[q.QuestionId]"
+                                          Variant="Variant.Outlined" Lines="2" Margin="Margin.Dense"
+                                          Placeholder="Type your answer here..." />
+                        }
+                    </MudPaper>
+                }
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Text" OnClick="@(() => _activeSurvey = null)"
+                               Style="text-transform:none">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="SubmitSurveyAsync" Disabled="_saving"
+                               Style="border-radius:8px;text-transform:none;font-weight:600">
+                        @if(_saving){
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Submit Survey
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@* DELETE CONFIRM DIALOG *@
+@if(_showDelete && _deleteTarget != null){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0"
+                  Style="background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:2rem;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:700;color:#111827;margin-bottom:0.5rem">
+                Delete Survey?
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280;margin-bottom:1.5rem">
+                "<strong>@_deleteTarget.Title</strong>" and all its responses will be permanently deleted.
+                This cannot be undone.
+            </MudText>
+            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                <MudButton Variant="Variant.Text"
+                           OnClick="@(() => { _showDelete = false; _deleteTarget = null; })"
+                           Style="text-transform:none">Cancel</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Error"
+                           OnClick="ConfirmDeleteAsync" Disabled="_deleting"
+                           Style="border-radius:8px;text-transform:none;font-weight:600">
+                    @if(_deleting){
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    Delete
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+<style>
+    .survey-card:hover {
+        border-color: #a78bfa !important;
+        box-shadow: 0 4px 20px rgba(139,92,246,0.10);
+        transform: translateY(-1px);
+    }
+</style>
+
+@code {
+    // state
+    private List<SurveyDto> _surveys   = [];
+    private HashSet<Guid>   _responded = [];
+    private SurveyDto?      _activeSurvey = null;
+    private bool _loading = true;
+    private bool _saving  = false;
+
+    // answer state for active survey
+    private Dictionary<Guid, double> _answers     = new();
+    private Dictionary<Guid, string> _textAnswers = new();
+
+    // create survey state
+    private bool _showCreate  = false;
+    private CreateSurveyDto _newSurvey   = new();
+    private DateTime? _newDeadline = null;
+    private List<CreateSurveyQuestionDto> _newQuestions = [];
+
+    // delete state
+    private bool  _showDelete  = false;
+    private bool  _deleting    = false;
+    private SurveyDto? _deleteTarget = null;
+
+    // responses viewer state (admin)
+    private bool   _showResponses    = false;
+    private bool   _responsesLoading = false;
+    private SurveyDto?  _viewingSurvey = null;
+    private List<SurveyResponseDto> _responses = [];
+
+    // lifecycle
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login"); return; }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync(){
+        _loading = true;
+        StateHasChanged();
+        try{
+            var endpoint = Auth.IsAdmin ? "api/surveys/all" : "api/surveys";
+            _surveys = await Http.GetFromJsonAsync<List<SurveyDto>>(endpoint) ?? [];
+        }
+        catch{ _surveys = []; }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    // alumni: open + submit survey
+    private async Task OpenSurvey(SurveyDto s){
+        try{
+            var full = await Http.GetFromJsonAsync<SurveyDto>($"api/surveys/{s.SurveyId}");
+            if(full != null){
+                _activeSurvey = full;
+                _answers     = full.Questions
+                    .Where(q => q.QuestionType == "Rating")
+                    .ToDictionary(q => q.QuestionId, _ => 3.0);
+                _textAnswers = full.Questions
+                    .Where(q => q.QuestionType != "Rating")
+                    .ToDictionary(q => q.QuestionId, _ => "");
+                StateHasChanged();
+            }
+        }
+        catch{ Snackbar.Add("Could not load survey.", Severity.Error); }
+    }
+
+    private async Task SubmitSurveyAsync(){
+        if(_activeSurvey == null) return;
+        _saving = true;
+        var dto = new SubmitSurveyDto{
+            SurveyId = _activeSurvey.SurveyId,
+            Answers  = _activeSurvey.Questions.Select(q => new SurveyAnswerDto{
+                QuestionId = q.QuestionId,
+                AnswerText = q.QuestionType == "Rating"
+                    ? _answers.GetValueOrDefault(q.QuestionId, 3).ToString()
+                    : _textAnswers.GetValueOrDefault(q.QuestionId, ""),
+            }).ToList()
+        };
+        var r = await Http.PostAsJsonAsync($"api/surveys/{_activeSurvey.SurveyId}/respond", dto);
+        _saving = false;
+        if(r.IsSuccessStatusCode){
+            Snackbar.Add("Survey submitted! Thank you.", Severity.Success);
+            _responded.Add(_activeSurvey.SurveyId);
+            _activeSurvey = null;
+        }
+        else{
+            var body = await r.Content.ReadAsStringAsync();
+            Snackbar.Add(body.Contains("already") ? "You have already submitted this survey." : "Failed to submit survey.", Severity.Error);
+        }
+    }
+
+    // admin: view responses
+    private async Task ViewResponsesAsync(SurveyDto s){
+        _viewingSurvey   = s;
+        _showResponses   = true;
+        _responsesLoading = true;
+        _responses       = [];
+        StateHasChanged();
+        try{
+            _responses = await Http.GetFromJsonAsync<List<SurveyResponseDto>>($"api/surveys/{s.SurveyId}/responses") ?? [];
+        }
+        catch{ Snackbar.Add("Could not load responses.", Severity.Error); }
+        _responsesLoading = false;
+        StateHasChanged();
+    }
+
+    private void CloseResponses(){
+        _showResponses  = false;
+        _viewingSurvey  = null;
+        _responses      = [];
+    }
+
+    private string GetAnswerAccent(string type) => type switch{
+        "Rating" => "#f59e0b",
+        "MCQ"    => "#6366f1",
+        _ => "#10b981"
+    };
+
+    // admin: create survey
+    private void AddQuestion() =>
+        _newQuestions.Add(new CreateSurveyQuestionDto{
+            QuestionType = "Text",
+            OrderIndex   = _newQuestions.Count
+        });
+
+    private void RemoveQuestion(int idx){
+        _newQuestions.RemoveAt(idx);
+        for(int i = 0; i < _newQuestions.Count; i++)
+            _newQuestions[i].OrderIndex = i;
+    }
+
+    private void CancelCreate(){
+        _showCreate = false;
+        _newSurvey= new();
+        _newDeadline= null;
+        _newQuestions = [];
+    }
+
+    private async Task CreateSurveyAsync(){
+        if(string.IsNullOrWhiteSpace(_newSurvey.Title)){
+            Snackbar.Add("Survey title is required.", Severity.Warning); return;
+        }
+        if(!_newQuestions.Any()){
+            Snackbar.Add("Add at least one question.", Severity.Warning); return;
+        }
+        if(_newQuestions.Any(q => string.IsNullOrWhiteSpace(q.QuestionText))){
+            Snackbar.Add("All questions must have text.", Severity.Warning); return;
+        }
+        _saving = true;
+        _newSurvey.Deadline  = _newDeadline;
+        _newSurvey.Questions = _newQuestions;
+        var r = await Http.PostAsJsonAsync("api/surveys", _newSurvey);
+        _saving = false;
+        if(r.IsSuccessStatusCode){
+            Snackbar.Add("Survey published!", Severity.Success);
+            CancelCreate();
+            await LoadAsync();
+        }
+        else Snackbar.Add("Failed to create survey.", Severity.Error);
+    }
+
+    // admin: close survey
+    private async Task CloseSurveyAsync(Guid id){
+        var r = await Http.PatchAsync($"api/surveys/{id}/close", null);
+        if(r.IsSuccessStatusCode){ Snackbar.Add("Survey closed.", Severity.Success); await LoadAsync(); }
+        else Snackbar.Add("Failed to close survey.", Severity.Error);
+    }
+
+    // admin: delete survey
+    private void AskDelete(SurveyDto s){ _deleteTarget = s; _showDelete = true; }
+
+    private async Task ConfirmDeleteAsync(){
+        if(_deleteTarget == null) return;
+        _deleting = true;
+        var r = await Http.DeleteAsync($"api/surveys/{_deleteTarget.SurveyId}");
+        _deleting = false;
+        if(r.IsSuccessStatusCode){
+            Snackbar.Add("Survey deleted.", Severity.Success);
+            _showDelete   = false;
+            _deleteTarget = null;
+            await LoadAsync();
+        }
+        else Snackbar.Add("Failed to delete survey.", Severity.Error);
+    }
+}

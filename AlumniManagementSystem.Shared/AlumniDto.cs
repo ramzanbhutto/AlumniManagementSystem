@@ -1,7 +1,5 @@
 namespace AlumniManagementSystem.Shared;
-
-public class AlumniDto
-{
+public class AlumniDto{
     public Guid Id { get; set; }
 
     [Required(ErrorMessage = "Roll Number is required")]

@@ -1,0 +1,236 @@
+@page "/dashboard"
+@rendermode InteractiveWebAssembly
+@inject DashboardApiService DashSvc
+@inject AlumniApiService AlumniSvc
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Dashboard — Alumni MS</PageTitle>
+
+<MudStack Spacing="4">
+
+    @* Greeting header *@
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+        <div>
+            <div style="font-size:1.55rem;font-weight:800;color:#0f172a;letter-spacing:-0.03em;line-height:1.2">
+                Good @_greeting, @(Auth.FullName?.Split(' ')[0])
+            </div>
+            <div style="font-size:0.85rem;color:#94a3b8;margin-top:3px;font-weight:500">
+                @DateTime.Now.ToString("dddd, MMMM d yyyy")  ·  FAST-NUCES Peshawar
+            </div>
+        </div>
+        @if(Auth.IsAdmin){
+            <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fcd34d;border-radius:10px;padding:6px 14px;display:flex;align-items:center;gap:6px">
+                <MudIcon Icon="@Icons.Material.Rounded.AdminPanelSettings" Style="font-size:0.9rem;color:#d97706" />
+                <span style="font-size:0.78rem;font-weight:700;color:#92400e">Admin Panel</span>
+            </div>
+        }
+    </div>
+
+    @* Stat cards *@
+    @if(_loading){
+        <MudGrid Spacing="3">
+            @for(int i=0; i<6; i++){
+                <MudItem xs="6" sm="4" md="2">
+                    <MudSkeleton Height="110px" Animation="Animation.Wave" Style="border-radius:14px" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if(_stats != null){
+        <MudGrid Spacing="3">
+            <MudItem xs="6" sm="4" md="2">
+                <DashStatCard
+                    Value="@_stats.TotalAlumni.ToString()"
+                    Label="Total Alumni"
+                    Icon="@Icons.Material.Rounded.People"
+                    Gradient="linear-gradient(135deg,#dbeafe,#eff6ff)"
+                    IconBg="#3b82f6"
+                    ValueColor="#1d4ed8" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <DashStatCard
+                    Value="@_stats.UpcomingEvents.ToString()"
+                    Label="Upcoming Events"
+                    Icon="@Icons.Material.Rounded.Event"
+                    Gradient="linear-gradient(135deg,#d1fae5,#ecfdf5)"
+                    IconBg="#10b981"
+                    ValueColor="#065f46" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <DashStatCard
+                    Value="@_stats.ActiveJobs.ToString()"
+                    Label="Active Jobs"
+                    Icon="@Icons.Material.Rounded.Work"
+                    Gradient="linear-gradient(135deg,#fef3c7,#fffbeb)"
+                    IconBg="#f59e0b"
+                    ValueColor="#92400e" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <DashStatCard
+                    Value="@_stats.TotalDonations.ToString("N0")"
+                    Label="Donations (PKR)"
+                    Icon="@Icons.Material.Rounded.Favorite"
+                    Gradient="linear-gradient(135deg,#fee2e2,#fff1f2)"
+                    IconBg="#ef4444"
+                    ValueColor="#991b1b" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <DashStatCard
+                    Value="@_stats.TotalMessages.ToString()"
+                    Label="My Messages"
+                    Icon="@Icons.Material.Rounded.Message"
+                    Gradient="linear-gradient(135deg,#ede9fe,#f5f3ff)"
+                    IconBg="#8b5cf6"
+                    ValueColor="#5b21b6" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <DashStatCard
+                    Value="@_stats.ActiveSurveys.ToString()"
+                    Label="Active Surveys"
+                    Icon="@Icons.Material.Rounded.Poll"
+                    Gradient="linear-gradient(135deg,#cffafe,#ecfeff)"
+                    IconBg="#0891b2"
+                    ValueColor="#164e63" />
+            </MudItem>
+        </MudGrid>
+
+        @* Bottom grid *@
+        <MudGrid Spacing="3">
+
+            @* Quick Navigation links *@
+            <MudItem xs="12" md="5">
+                <div style="background:#ffffff;border:1px solid #e8edf3;border-radius:16px;padding:1.5rem;height:100%">
+                    <div style="font-size:0.9rem;font-weight:700;color:#0f172a;margin-bottom:1rem">Quick Navigation</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                        <NavTile Href="/alumni"    Icon="@Icons.Material.Rounded.People"          Label="Alumni" Sub="Directory" Bg="#eff6ff" IconColor="#3b82f6" />
+                        <NavTile Href="/events"    Icon="@Icons.Material.Rounded.CalendarMonth"   Label="Events" Sub="@($"{_stats.UpcomingEvents} upcoming")" Bg="#f0fdf4" IconColor="#10b981" />
+                        <NavTile Href="/jobs"      Icon="@Icons.Material.Rounded.WorkOutline"     Label="Jobs" Sub="@($"{_stats.ActiveJobs} listings")" Bg="#fffbeb" IconColor="#f59e0b" />
+                        <NavTile Href="/messages"  Icon="@Icons.Material.Rounded.MailOutline"     Label="Messages" Sub="@($"{_stats.UnreadMessages} unread")" Bg="#f5f3ff" IconColor="#8b5cf6" />
+                        <NavTile Href="/donations" Icon="@Icons.Material.Rounded.FavoriteBorder"  Label="Donations" Sub="Give back" Bg="#fff1f2" IconColor="#ef4444" />
+                        <NavTile Href="/surveys"   Icon="@Icons.Material.Rounded.Poll"    Label="Surveys" Sub="@($"{_stats.ActiveSurveys} active")" Bg="#ecfeff" IconColor="#0891b2" />
+                        <NavTile Href="/newsletters" Icon="@Icons.Material.Rounded.MarkEmailRead" Label="Newsletters" Sub="Stay updated" Bg="#fef9c3" IconColor="#ca8a04" />
+                        <NavTile Href="/profile"   Icon="@Icons.Material.Rounded.PersonOutline"   Label="Profile" Sub="Edit info" Bg="#f1f5f9" IconColor="#64748b" />
+                        <NavTile Href="/logout"    Icon="@Icons.Material.Rounded.Logout"           Label="Sign Out" Sub="End session" Bg="#fef2f2" IconColor="#ef4444" />
+                    </div>
+                    @if(Auth.IsAdmin){
+                        <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid #f1f5f9">
+                            <div style="font-size:0.72rem;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Admin Tools</div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+                                <NavTile Href="/admin/reports"      Icon="@Icons.Material.Rounded.InsertChart" Label="Reports"     Sub="Analytics"    Bg="#fff7ed" IconColor="#ea580c" IsSmall="true" />
+                                <NavTile Href="/admin/newsletter"   Icon="@Icons.Material.Rounded.Campaign"   Label="Newsletter"  Sub="Publish"      Bg="#fff7ed" IconColor="#ea580c" IsSmall="true" />
+                                <NavTile Href="/admin/departments"  Icon="@Icons.Material.Rounded.AccountTree" Label="Depts"      Sub="Programs"     Bg="#fff7ed" IconColor="#ea580c" IsSmall="true" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            </MudItem>
+
+            @* Recent Alumni — only admin sees this list *@
+            @if(Auth.IsAdmin){
+                <MudItem xs="12" md="7">
+                    <div style="background:#ffffff;border:1px solid #e8edf3;border-radius:16px;padding:1.5rem;height:100%">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+                            <div style="font-size:0.9rem;font-weight:700;color:#0f172a">Recent Alumni</div>
+                            <a href="/alumni" style="font-size:0.78rem;font-weight:600;color:#3b82f6;text-decoration:none">View all →</a>
+                        </div>
+                        @if(_recentAlumni.Any()){
+                            <div style="display:flex;flex-direction:column;gap:4px">
+                                @foreach(var a in _recentAlumni.Take(7)){
+                                    <div class="alumni-row" style="display:flex;align-items:center;gap:12px;padding:0.6rem 0.75rem;border-radius:10px;transition:background 0.13s">
+                                        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:white;flex-shrink:0">
+                                            @a.FirstName[0]@a.LastName[0]
+                                        </div>
+                                        <div style="flex:1;min-width:0">
+                                            <div style="font-size:0.85rem;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                                                @a.FirstName @a.LastName
+                                            </div>
+                                            <div style="font-size:0.72rem;color:#94a3b8;margin-top:1px">
+                                                @a.RollNumber · @(a.ProgramName ?? "—")
+                                            </div>
+                                        </div>
+                                        <div style="@($"font-size:0.7rem;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;background:{(a.IsProfileComplete ? "#d1fae5" : "#fef3c7")};color:{(a.IsProfileComplete ? "#065f46" : "#92400e")}")">
+                                            @(a.IsProfileComplete ? "Complete" : "Incomplete")
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else{
+                            <div style="text-align:center;padding:2.5rem 1rem;color:#94a3b8;font-size:0.85rem">
+                                No alumni registered yet
+                            </div>
+                        }
+                    </div>
+                </MudItem>
+            }
+            else{
+                @* Non-admin: show a welcome / profile completion card *@
+                <MudItem xs="12" md="7">
+                    <div style="background:linear-gradient(135deg,#eff6ff 0%,#f5f3ff 100%);border:1px solid #ddd6fe;border-radius:16px;padding:1.75rem;height:100%;display:flex;flex-direction:column;justify-content:center">
+                        <div style="width:52px;height:52px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem">
+                            <MudIcon Icon="@Icons.Material.Rounded.School" Style="font-size:1.6rem;color:white" />
+                        </div>
+                        <div style="font-size:1.15rem;font-weight:800;color:#0f172a;margin-bottom:0.4rem">
+                            Welcome to FAST Alumni Network
+                        </div>
+                        <div style="font-size:0.875rem;color:#64748b;line-height:1.6;margin-bottom:1.25rem">
+                            Connect with fellow alumni, discover job opportunities, attend events and stay updated with the latest news from FAST-NUCES Peshawar.
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <a href="/profile" style="background:#3b82f6;color:white;font-size:0.8rem;font-weight:600;padding:8px 16px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:5px">
+                                <MudIcon Icon="@Icons.Material.Rounded.PersonOutline" Style="font-size:0.9rem" />
+                                Complete Profile
+                            </a>
+                            <a href="/alumni" style="background:white;color:#475569;font-size:0.8rem;font-weight:600;padding:8px 16px;border-radius:8px;text-decoration:none;border:1px solid #e2e8f0;display:inline-flex;align-items:center;gap:5px">
+                                <MudIcon Icon="@Icons.Material.Rounded.People" Style="font-size:0.9rem" />
+                                Browse Alumni
+                            </a>
+                        </div>
+                    </div>
+                </MudItem>
+            }
+
+        </MudGrid>
+    }
+</MudStack>
+
+<style>
+    .alumni-row:hover { background: #f8fafc !important; }
+</style>
+
+@code {
+    private DashboardStatsDto? _stats = null;
+    private List<AlumniDto> _recentAlumni = [];
+    private bool _loading = true;
+
+    private string _greeting{
+      get{
+        int h = DateTime.Now.Hour;
+        return h switch{
+          > 5 and < 12 => "morning",
+          >= 12 and < 17 => "afternoon",
+          >= 17 and < 21 => "evening",
+          _ => "night"
+        };
+      }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login", forceLoad: true); return; }
+
+        try{
+            var statsTask  = DashSvc.GetStatsAsync();
+            var alumniTask = AlumniSvc.GetAllAsync();
+            await Task.WhenAll(statsTask, alumniTask);
+            _stats = await statsTask;
+            _recentAlumni = await alumniTask;
+        }
+        catch{ }
+
+        _loading = false;
+        StateHasChanged();
+    }
+}

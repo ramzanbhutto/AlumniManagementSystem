@@ -2,6 +2,7 @@ using AlumniManagementSystem.Application.Services;
 using AlumniManagementSystem.Domain;
 using AlumniManagementSystem.Domain.Enums;
 using AlumniManagementSystem.Shared;
+using AlumniManagementSystem.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
  
@@ -12,7 +13,11 @@ namespace AlumniManagementSystem.Api.Controllers;
 [Authorize]
 public class EventsController : ControllerBase{
   private readonly EventService _svc;
-  public EventsController(EventService svc) => _svc = svc;
+  private readonly IAlumniRepository _alumniRepo;
+  public EventsController(EventService svc, IAlumniRepository alumniRepo){
+    _svc= svc; 
+    _alumniRepo= alumniRepo; 
+  }
  
   [HttpGet]
   public async Task<ActionResult> GetAll(){
@@ -25,6 +30,22 @@ public class EventsController : ControllerBase{
     var events = await _svc.GetUpcomingAsync();
     return Ok(events.Select(MapEvent));
   }
+
+  [HttpPost("{id:guid}/rsvp")]
+  public async Task<ActionResult> Rsvp(Guid id){
+    var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+    var alumni = await _alumniRepo.GetByUserIdAsync(userId);
+    if(alumni==null) return BadRequest("Alumni profile not found.");
+    var existing = await _svc.GetRsvpAsync(id, alumni.AlumniId);
+    if(existing != null)  return Conflict(new { message = "You have already RSVPed to this event." });
+    var rsvp = new EventRSVP{
+      RsvpId   = Guid.NewGuid(),
+      EventId  = id,
+      AlumniId = alumni.AlumniId,
+    }; 
+    await _svc.AddRsvpAsync(rsvp);
+    return Ok(new { rsvp.RsvpId, message = "RSVP confirmed!" });
+  }
  
   [HttpPost]
   [Authorize(Roles = "Admin")]

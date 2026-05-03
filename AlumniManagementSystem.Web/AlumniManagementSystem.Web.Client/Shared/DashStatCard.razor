@@ -1,0 +1,26 @@
+<div style="@($"background:{Gradient};border:1px solid rgba(0,0,0,0.05);border-radius:14px;padding:1.25rem;transition:all 0.18s;cursor:default")"
+     class="dash-stat-card">
+    <div style="@($"width:36px;height:36px;background:{IconBg};border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:0.75rem;box-shadow:0 2px 8px {IconBg}55")">
+        <MudIcon Icon="@Icon" Style="font-size:1.05rem;color:white" />
+    </div>
+    <div style="@($"font-size:1.65rem;font-weight:800;color:{ValueColor};line-height:1;margin-bottom:0.2rem;font-variant-numeric:tabular-nums;letter-spacing:-0.02em")">
+        @Value
+    </div>
+    <div style="font-size:0.75rem;color:#64748b;font-weight:500">@Label</div>
+</div>
+
+<style>
+    .dash-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.07) !important;
+    }
+</style>
+
+@code {
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Gradient  { get; set; } = "linear-gradient(135deg,#dbeafe,#eff6ff)";
+    [Parameter] public string IconBg  { get; set; } = "#3b82f6";
+    [Parameter] public string ValueColor { get; set; } = "#1d4ed8";
+}

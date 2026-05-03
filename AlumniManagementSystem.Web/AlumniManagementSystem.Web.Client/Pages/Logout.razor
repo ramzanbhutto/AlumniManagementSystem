@@ -1,0 +1,12 @@
+@page "/logout"
+@rendermode InteractiveWebAssembly
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+}

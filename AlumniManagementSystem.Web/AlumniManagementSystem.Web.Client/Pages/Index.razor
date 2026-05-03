@@ -1,0 +1,12 @@
+@* FILE: Pages/Index.razor *@
+@page "/"
+@rendermode InteractiveWebAssembly
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized(){
+      if(Auth.IsLoggedIn) Nav.NavigateTo("/dashboard");
+      else Nav.NavigateTo("/login", forceLoad:true );
+    }
+}

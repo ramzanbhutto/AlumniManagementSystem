@@ -1,0 +1,215 @@
+@page "/messages"
+@rendermode InteractiveWebAssembly
+@inject NavigationManager Nav
+@inject MessageApiService Svc
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+
+<PageTitle>Messages</PageTitle>
+
+<MudStack Spacing="4">
+    <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween" Class="flex-wrap">
+        <MudText Typo="Typo.h5" Style="font-weight:600;letter-spacing:-0.02em">Messages</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Rounded.Send"
+                   OnClick="@(() => _showCompose = true)"
+                   Style="border-radius:8px">Compose</MudButton>
+    </MudStack>
+
+    <MudTabs Rounded="true" PanelClass="pt-4">
+        <MudTabPanel Text="Inbox" Icon="@Icons.Material.Rounded.Inbox">
+            @if(_loadingInbox){ <MudSkeleton Height="200px" Animation="Animation.Wave" Style="border-radius:12px" /> }
+            else if(!_inbox.Any()){
+                <MudPaper Elevation="0" Style="background:#ECEFF1;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:3rem;text-align:center">
+                    <MudIcon Icon="@Icons.Material.Rounded.MarkEmailRead" Style="font-size:3rem;color:#374151;margin-bottom:0.75rem" />
+                    <MudText Style="color:#111827">Inbox is empty</MudText>
+                </MudPaper>
+            }
+            else{
+                <MudStack Spacing="2">
+                    @foreach(var m in _inbox){
+                        <MudPaper Elevation="0"
+                                  Style="@($"background:#ECEFF1;border:1px solid {(m.IsRead ? "rgba(17,24,39,0.5)" : "rgba(17,24,39,1)")};border-radius:12px;padding:1rem;transition:0.15s")"
+                                  Class="msg-hover"
+                                  @onclick="@(async () => await MarkReadAsync(m))">
+                            <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                <MudAvatar Size="Size.Small" Style="background:rgba(79,142,247,0.1);color:#4f8ef7;font-size:0.7rem;flex-shrink:0">
+                                    @(m.SenderName.Length > 0 ? m.SenderName[0].ToString() : "?")
+                                </MudAvatar>
+                                <div style="flex:1;min-width:0">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                        <MudText Typo="Typo.body2" Style="@($"font-weight:{(m.IsRead ? "200" : "400")};color:#111827")">
+                                            @m.SenderName
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Style="color:#6b7280;flex-shrink:0">
+                                            @m.SentAt.ToString("MMM d, HH:mm")
+                                        </MudText>
+                                    </MudStack>
+                                    @if(m.Subject!=null){
+                                        <MudText Typo="Typo.body2" Style=";color:#111827;margin-bottom:2px">@m.Subject</MudText>
+                                    }
+                                    <MudText Typo="Typo.caption" Style="color:#6b7280;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">
+                                        @m.Body
+                                    </MudText>
+                                </div>
+                                @if(!m.IsRead){
+                                    <div style="width:8px;height:8px;border-radius:50%;background:#4f8ef7;flex-shrink:0;margin-top:6px"></div>
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Sent" Icon="@Icons.Material.Rounded.Send">
+            @if(!_sent.Any()){
+                <MudPaper Elevation="0" Style="background:#BBDEFB;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:3rem;text-align:center">
+                    <MudText Style="color:#6b7280">No sent messages</MudText>
+                </MudPaper>
+            }
+            else{
+                <MudStack Spacing="2">
+                    @foreach(var m in _sent){
+                        <MudPaper Elevation="0" Style="background:#BBDEFB;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem">
+                            <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Rounded.Send" Style="color:#6b7280;font-size:1rem;margin-top:2px;flex-shrink:0" />
+                                <div style="flex:1">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                        <MudText Typo="Typo.body2" Style="color:#111827">To: @m.ReceiverName</MudText>
+                                        <MudText Typo="Typo.caption" Style="color:#6b7280">@m.SentAt.ToString("MMM d, HH:mm")</MudText>
+                                    </MudStack>
+                                    @if(m.Subject != null){ <MudText Typo="Typo.body2" Style="color:#111827">@m.Subject</MudText> }
+                                    <MudText Typo="Typo.caption" Style="color:#6b7280;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">@m.Body</MudText>
+                                </div>
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            }
+        </MudTabPanel>
+    </MudTabs>
+</MudStack>
+
+@* Compose Dialog *@
+@if(_showCompose){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0" Style="background:#BBDEFB;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:2rem;width:100%;max-width:480px">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600">New Message</MudText>
+                <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small" OnClick="@(() => { _showCompose = false; ResetCompose(); })" />
+            </MudStack>
+            <MudStack Spacing="3">
+                @* Roll number input with live lookup *@
+                <div>
+                    <MudTextField @bind-Value="_rollInput" Label="Recipient Roll Number (e.g. 24P-3051)"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense"
+                                  Immediate="true" @bind-Value:after="LookupByRoll" />
+                    @if(_lookupLoading){
+                        <MudText Typo="Typo.caption" Style="color:#6b7280;margin-top:4px">Looking up...</MudText>
+                    }
+                    else if(_lookupResult != null){
+                        <MudText Typo="Typo.caption" Style="color:#059669;margin-top:4px">
+                            ✓ @_lookupResult.FirstName @_lookupResult.LastName (@_lookupResult.RollNumber)
+                        </MudText>
+                    }
+                    else if(_lookupFailed){
+                        <MudText Typo="Typo.caption" Style="color:#dc2626;margin-top:4px">
+                            ✗ No alumni found with that roll number
+                        </MudText>
+                    }
+                </div>
+                <MudTextField @bind-Value="_dto.Subject" Label="Subject (optional)"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <MudTextField @bind-Value="_dto.Body" Label="Message"
+                              Variant="Variant.Outlined" Lines="5" Margin="Margin.Dense" />
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Text" OnClick="@(() => { _showCompose = false; ResetCompose(); })">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="SendAsync" Disabled="_saving" Style="border-radius:8px">
+                        @if(_saving){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                        Send
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+<style>.msg-hover:hover { border-color:rgba(255,255,255,0.12)!important; }</style>
+
+@code {
+    private List<MessageDto> _inbox = [], _sent = [];
+    private bool _loadingInbox = true, _showCompose = false, _saving = false;
+    private bool _lookupLoading = false, _lookupFailed = false;
+    private string _rollInput = "";
+    private RollLookupDto? _lookupResult;
+    private SendMessageDto _dto = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login"); return; }
+        var inboxTask = Svc.GetInboxAsync();
+        var sentTask  = Svc.GetSentAsync();
+        await Task.WhenAll(inboxTask, sentTask);
+        _inbox = await inboxTask;
+        _sent  = await sentTask;
+        _loadingInbox = false;
+        StateHasChanged();
+    }
+
+    private async Task LookupByRoll(){
+        if(string.IsNullOrWhiteSpace(_rollInput)){
+            _lookupResult = null;
+            _lookupFailed = false;
+            return;
+        }
+        _lookupLoading = true;
+        _lookupResult  = null;
+        _lookupFailed  = false;
+        StateHasChanged();
+        _lookupResult = await Svc.GetUserIdByRollAsync(_rollInput.Trim());
+        _lookupLoading = false;
+        if(_lookupResult == null) _lookupFailed = true;
+        StateHasChanged();
+    }
+
+    private async Task SendAsync(){
+        if(_lookupResult == null){
+            Snackbar.Add("Please enter a valid recipient roll number.", Severity.Warning);
+            return;
+        }
+        if(string.IsNullOrWhiteSpace(_dto.Body)){
+            Snackbar.Add("Message body is required.", Severity.Warning);
+            return;
+        }
+        _dto.ReceiverId = _lookupResult.UserId;
+        _saving = true;
+        var (ok, err) = await Svc.SendAsync(_dto);
+        _saving = false;
+        if(ok){
+            Snackbar.Add("Message sent!", Severity.Success);
+            _showCompose = false;
+            ResetCompose();
+            _sent = await Svc.GetSentAsync();
+            StateHasChanged();
+        }
+        else Snackbar.Add(err ?? "Failed to send message.", Severity.Error);
+    }
+
+    private void ResetCompose(){
+        _rollInput     = "";
+        _lookupResult  = null;
+        _lookupFailed  = false;
+        _dto           = new();
+    }
+
+    private async Task MarkReadAsync(MessageDto m){
+     if(m.IsRead) return;              // already read — do nothing
+     await Svc.MarkAsReadAsync(m.MessageId);
+     m.IsRead = true;                  // update local state immediately
+     StateHasChanged();
+    }
+}

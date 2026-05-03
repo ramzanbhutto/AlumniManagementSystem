@@ -1,0 +1,249 @@
+@page "/profile"
+@rendermode InteractiveWebAssembly
+@inject NavigationManager Nav
+@inject AlumniApiService Svc
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+
+<PageTitle>My Profile</PageTitle>
+
+<MudStack Spacing="4">
+    <MudText Typo="Typo.h5" Style="font-weight:600;letter-spacing:-0.02em">My Profile</MudText>
+
+    @if(_loading){
+        <MudSkeleton Height="400px" Animation="Animation.Wave" Style="border-radius:12px" />
+    }
+    else if(_alumni == null){
+        <MudAlert Severity="Severity.Warning">Profile not found. Please contact admin.</MudAlert>
+    }
+    else{
+        <MudGrid Spacing="4">
+
+            @* ── Profile Card ── *@
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="0" Style="background:#1e2130;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:2rem;text-align:center">
+                    <MudAvatar Style="width:80px;height:80px;background:rgba(79,142,247,0.15);color:#4f8ef7;font-size:2rem;margin:0 auto 1rem">
+                        @_alumni.FirstName[0]@_alumni.LastName[0]
+                    </MudAvatar>
+                    <MudText Typo="Typo.h6" Style="font-weight:600;color:#e8eaf0">
+                        @_alumni.FirstName @_alumni.LastName
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color:#B0BEC5;margin-bottom:0.5rem">
+                        @_alumni.RollNumber
+                    </MudText>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(_alumni.IsProfileComplete ? Color.Success : Color.Warning)"
+                             Variant="Variant.Outlined">
+                        @(_alumni.IsProfileComplete ? "Profile Complete" : "Incomplete Profile")
+                    </MudChip>
+
+                    @if(_alumni.CurrentJobTitle != null){
+                        <MudDivider Class="my-3" Style="border-color:rgba(255,255,255,0.05)" />
+                        <MudText Typo="Typo.body2" Style="font-weight:500;color:#e8eaf0">@_alumni.CurrentJobTitle</MudText>
+                        <MudText Typo="Typo.caption" Style="color:#CFD8DC">@_alumni.CurrentCompany</MudText>
+                    }
+
+                    <MudDivider Class="my-3" Style="border-color:rgba(255,255,255,0.05)" />
+                    <MudStack Spacing="1">
+                        @if(_alumni.ProgramName != null){
+                            <MudText Typo="Typo.caption" Style="color:#B0BEC5">@_alumni.ProgramName</MudText>
+                        }
+                        @if(_alumni.GraduationYear.HasValue){
+                            <MudText Typo="Typo.caption" Style="color:#B0BEC5">Class of @_alumni.GraduationYear</MudText>
+                        }
+                        @if(_alumni.City != null){
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Rounded.LocationOn" Style="font-size:0.85rem;color:#6b7280" />
+                                <MudText Typo="Typo.caption" Style="color:#B0BEC5">
+                                    @_alumni.City@(_alumni.Country != null ? $", {_alumni.Country}" : "")
+                                </MudText>
+                            </MudStack>
+                        }
+                    </MudStack>
+
+                    @if(_alumni.LinkedInUrl != null){
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                                   Href="@_alumni.LinkedInUrl" Target="_blank"
+                                   StartIcon="@Icons.Material.Rounded.Link"
+                                   Class="mt-3" Style="border-radius:8px;">
+                            LinkedIn
+                        </MudButton>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            @* ── Edit Form ── *@
+            <MudItem xs="12" md="8">
+                <MudPaper Elevation="0" Style="background:#EDE7F6;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:1.5rem">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;color:#e8eaf0;margin-bottom:1.25rem">
+                        Edit Profile
+                    </MudText>
+                    <MudStack Spacing="3">
+
+                        @* Basic Info *@
+                        <MudText Typo="Typo.caption" Style="border-radius:8px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Basic Info</MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_edit.FirstName" Label="First Name"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_edit.LastName" Label="Last Name"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_edit.Email" Label="Email"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                                              InputType="InputType.Email" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_edit.Phone" Label="Phone"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                                              InputType="InputType.Telephone" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <NativeSelect Label="Gender" Value="@(_edit.Gender ?? "")" BgColor="#EDE7F6"
+                                              ValueChanged="@((string? v) => _edit.Gender = v)">
+                                    <option value="">Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </NativeSelect>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <div>
+                                    <label style="display:block;font-size:0.75rem;color:#6b7280;margin-bottom:4px;font-weight:500">Date of Birth</label>
+                                    <input type="date"
+                                           value="@_edit.DateOfBirth"
+                                           @onchange="@((ChangeEventArgs e) => _edit.DateOfBirth = e.Value?.ToString())"
+                                           style="width:100%;padding:8px 12px;border:1px solid #555;border-radius:4px;
+                                                  background-color:#EDE7F6;font-size:0.875rem;color:#1e2130;
+                                                  font-family:inherit;outline:none;height:38px;box-sizing:border-box" />
+                                </div>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Style="border-color:rgba(255,255,255,0.05)" />
+
+                        @* Academic *@
+                        <MudText Typo="Typo.caption" Style="color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Academic</MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="4">
+                                <MudTextField @bind-Value="_edit.RollNumber" Label="Roll Number"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudNumericField @bind-Value="_edit.BatchYear" Label="Batch Year"
+                                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                 Min="1990" Max="2040" HideSpinButtons="true" />
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudNumericField @bind-Value="_edit.GraduationYear" Label="Graduation Year"
+                                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                 Min="1990" Max="2040" HideSpinButtons="true" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Style="border-color:rgba(255,255,255,0.05)" />
+
+                        @* Location *@
+                        <MudText Typo="Typo.caption" Style="color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Location</MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_edit.City" Label="City"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_edit.Country" Label="Country"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Style="border-color:rgba(255,255,255,0.05)" />
+
+                        @* Career *@
+                        <MudText Typo="Typo.caption" Style="color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">Career</MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_edit.CurrentJobTitle" Label="Current Job Title"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField @bind-Value="_edit.CurrentCompany" Label="Current Company"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="_edit.LinkedInUrl" Label="LinkedIn URL"
+                                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                                              InputType="InputType.Url"
+                                              Placeholder="https://linkedin.com/in/yourname" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-2">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       OnClick="SaveAsync" Disabled="_saving" Style="border-radius:8px">
+                                @if(_saving){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                                Save Changes
+                            </MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+        </MudGrid>
+    }
+</MudStack>
+
+@code {
+    private AlumniDto? _alumni = null;
+    private UpdateAlumniDto _edit = new();
+    private bool _loading = true, _saving = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login"); return; }
+        _alumni = await Svc.GetByIdAsync(Auth.AlumniId);
+        if(_alumni != null) PopulateEdit();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private void PopulateEdit(){
+        _edit = new UpdateAlumniDto{
+            FirstName= _alumni!.FirstName,
+            LastName= _alumni.LastName,
+            Email= _alumni.Email,
+            RollNumber= _alumni.RollNumber,
+            Phone= _alumni.Phone,
+            Gender= _alumni.Gender,
+            DateOfBirth= _alumni.DateOfBirth,
+            BatchYear= _alumni.BatchYear,
+            GraduationYear= _alumni.GraduationYear,
+            City= _alumni.City,
+            Country= _alumni.Country,
+            CurrentJobTitle= _alumni.CurrentJobTitle,
+            CurrentCompany= _alumni.CurrentCompany,
+            LinkedInUrl= _alumni.LinkedInUrl,
+            ProfilePicUrl= _alumni.ProfilePicUrl,
+        };
+    }
+
+    private async Task SaveAsync(){
+        if(_alumni == null) return;
+        if(string.IsNullOrWhiteSpace(_edit.FirstName) || string.IsNullOrWhiteSpace(_edit.LastName)){
+            Snackbar.Add("First name and last name are required.", Severity.Warning);
+            return;
+        }
+        _saving = true;
+        var (ok, err) = await Svc.UpdateProfileAsync(_alumni.Id, _edit);
+        _saving = false;
+        if(ok){
+            Snackbar.Add("Profile updated!", Severity.Success);
+            _alumni = await Svc.GetByIdAsync(Auth.AlumniId);
+            if(_alumni != null) PopulateEdit();
+            StateHasChanged();
+        }
+        else Snackbar.Add(err ?? "Failed to update profile.", Severity.Error);
+    }
+}

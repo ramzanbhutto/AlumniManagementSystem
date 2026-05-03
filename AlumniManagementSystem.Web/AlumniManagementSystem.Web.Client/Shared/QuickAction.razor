@@ -1,0 +1,30 @@
+<MudPaper Elevation="0"
+          Style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);
+                 border-radius:10px;padding:0.75rem 1rem;cursor:pointer;transition:0.15s"
+          Class="quick-action-hover"
+          @onclick="@(() => Nav.NavigateTo(Href))">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+        <MudIcon Icon="@Icon" Style="color:#4f8ef7;font-size:1.1rem;flex-shrink:0" />
+        <div>
+            <MudText Typo="Typo.body2" Style="font-weight:500;color:#111827">@Label</MudText>
+            <MudText Typo="Typo.caption" Style="color:#6b7280">@Sub</MudText>
+        </div>
+        <MudSpacer />
+        <MudIcon Icon="@Icons.Material.Rounded.ChevronRight" Style="color:#374151;font-size:1rem" />
+    </MudStack>
+</MudPaper>
+
+<style>
+    .quick-action-hover:hover {
+        background: rgba(79,142,247,0.05) !important;
+        border-color: rgba(79,142,247,0.15) !important;
+    }
+</style>
+
+@code {
+    [Parameter] public string Href  { get; set; } = "/";
+    [Parameter] public string Icon  { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Sub   { get; set; } = "";
+    [Inject] NavigationManager Nav { get; set; } = default!;
+}

@@ -1,0 +1,198 @@
+@page "/donations"
+@using MudBlazor
+@rendermode InteractiveWebAssembly
+@inject DonationApiService Svc
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Donations</PageTitle>
+
+<MudStack Spacing="4">
+    <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween" Class="flex-wrap">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:600;letter-spacing:-0.02em">Donations</MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280">Support FAST-NUCES alumni initiatives</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Rounded.Favorite"
+                   OnClick="@(() => _showCreate = true)"
+                   Style="border-radius:9px">Donate</MudButton>
+    </MudStack>
+
+    @if(_loading){
+        <MudSkeleton Height="300px" Animation="Animation.Wave" Style="border-radius:12px" />
+    }
+    else{
+        <MudPaper Elevation="0" Style="background:#EDE7F6;border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden">
+            @if(!_donations.Any()){
+                <div style="padding:3rem;text-align:center">
+                    <MudIcon Icon="@Icons.Material.Rounded.FavoriteBorder" Style="font-size:3rem;color:#374151;margin-bottom:0.75rem" />
+                    <MudText Style="color:#6b7280">No donations yet. Give yours here!</MudText>
+                </div>
+            }
+            else{
+                <MudDataGrid Items="@_donations" Dense="true" Hover="true" Style="background:transparent">
+                    <Columns>
+                        <TemplateColumn Title="Donor">
+                            <CellTemplate>
+                                <MudText Typo="Typo.body2" Style="font-weight:500;color:#000000">
+                                    @(context.Item.IsAnonymous ? "Anonymous" : context.Item.AlumniName ?? "—")
+                                </MudText>
+                                @if(!context.Item.IsAnonymous && context.Item.AlumniRoll!=null){
+                                    <MudText Typo="Typo.caption" Style="color:#6b7280">@context.Item.AlumniRoll</MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Amount">
+                            <CellTemplate>
+                                <MudText Style="font-weight:600;color:#00C853">
+                                    @context.Item.Currency @context.Item.Amount.ToString("N0")
+                                </MudText>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Campaign" Title="Campaign" />
+                        <PropertyColumn Property="x => x.PaymentMethod" Title="Method" />
+                        <TemplateColumn Title="Date">
+                            <CellTemplate>
+                                <MudText Typo="Typo.body2" Style="color:#111111">
+                                    @context.Item.DonationDate.ToString("MMM d, yyyy")
+                                </MudText>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Message">
+                            <CellTemplate>
+                                @if(context.Item.Message!=null){
+                                    <MudText Typo="Typo.caption" Style="color:#6b7280;font-style:italic">
+                                        "@context.Item.Message"
+                                    </MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                    <PagerContent><MudDataGridPager T="DonationDto" /></PagerContent>
+                </MudDataGrid>
+            }
+        </MudPaper>
+    }
+</MudStack>
+
+@* Donate Dialog *@
+@if(_showCreate){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0"
+                  Style="background:#E0E0E0;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:2rem;width:100%;max-width:460px">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600">Make a Donation</MudText>
+                <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small"
+                               OnClick="@(() => _showCreate = false)" />
+            </MudStack>
+
+            <MudStack Spacing="4">
+              @* Amount *@
+        <div>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                     <MudTextField T="string"
+                                  Value="@_amountInput"
+                                  ValueChanged="@((string val) => { _amountInput = val; decimal.TryParse(val, out _amount); StateHasChanged(); })"
+                                  Label="Donation Amount"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Adornment="Adornment.Start"
+                                  AdornmentText="PKR"
+                                  AdornmentColor="Color.Primary"
+                                  InputType="InputType.Number"
+                                  Immediate="true"
+                       />
+                </MudStack>
+         </div>
+
+                  @* Campaign *@
+                 <NativeSelect Label="Campaign" Value="@_campaign"
+                               ValueChanged="@((string? v) => { _campaign = v ?? "Scholarship Fund"; })">
+                              <option value="Scholarship Fund">Scholarship Fund</option>
+                              <option value="Library Fund">Library Fund</option>
+                              <option value="Lab Equipment">Lab Equipment</option>
+                              <option value="Infrastructure">Infrastructure</option>
+                              <option value="General">General</option>
+                </NativeSelect>
+
+                @* Payment method *@
+                <NativeSelect Label="Payment Method" Value="@_paymentMethod"
+                             ValueChanged="@((string? v) => { _paymentMethod = v ?? "JazzCash"; })">
+                             <option value="JazzCash">📱 JazzCash</option>
+                             <option value="EasyPaisa">📱 EasyPaisa</option>
+                             <option value="BankTransfer">🏦 Bank Transfer</option>
+                             <option value="Card">💳 Card</option>
+              </NativeSelect>
+
+                @* Message *@
+                <MudTextField @bind-Value="_message" Label="Message (optional)"
+                              Variant="Variant.Outlined" Lines="2" Margin="Margin.Dense"
+                              Placeholder="Leave a message with your donation..." />
+
+                @* Anonymous toggle *@
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudSwitch T="bool" @bind-Value="_isAnonymous" Color="Color.Primary" />
+                    <MudText Typo="Typo.body2" Style="color:#111111">Donate anonymously</MudText>
+                </MudStack>
+
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Text" OnClick="@(() => _showCreate = false)">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="DonateAsync" Disabled="_saving" Style="border-radius:8px">
+                              @if(_saving){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                              Donate PKR @_amount
+</MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    private List<DonationDto> _donations = [];
+    private bool _loading = true;
+    private bool _showCreate = false;
+    private bool _saving = false;
+    private bool _isAnonymous  = false;
+    private decimal _amount = 5000m;
+    private string _amountInput = "5000";
+    private string _campaign = "Scholarship Fund";
+    private string  _paymentMethod= "JazzCash";
+    private string? _message;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+      if(!firstRender) return;
+      await Auth.InitAsync();
+      if(!Auth.IsLoggedIn) { Nav.NavigateTo("/login", forceLoad: true); return; }
+      _donations = Auth.IsAdmin ? await Svc.GetAllAsync() : await Svc.GetMyAsync();
+      _loading = false;
+      StateHasChanged();
+    }
+
+    private async Task DonateAsync(){
+      _saving = true;
+      var dto = new CreateDonationDto
+      {
+          Amount= _amount,
+          Currency= "PKR",
+          Campaign= _campaign,
+          PaymentMethod= _paymentMethod,
+          IsAnonymous= _isAnonymous,
+          Message= _message,
+      };
+        var (ok, err) = await Svc.CreateAsync(dto);
+        _saving = false;
+        if (ok){
+            Snackbar.Add("Thank you for your donation! 💙", Severity.Success);
+            _showCreate = false;
+            _amount = 5000m; _campaign = "Scholarship Fund";
+            _paymentMethod = "JazzCash"; _message = null; _isAnonymous = false;
+            _donations = Auth.IsAdmin ? await Svc.GetAllAsync() : await Svc.GetMyAsync();
+            StateHasChanged();
+        }
+        else Snackbar.Add(err ?? "Donation failed. Please try again.", Severity.Error);
+    }
+}

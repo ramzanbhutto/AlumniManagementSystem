@@ -50,4 +50,36 @@ public class DepartmentsController : ControllerBase{
         AlumniCount = p.Alumnis.Count,
       }));
   }
+
+   [HttpPost("{id:guid}/programs")]
+   [Authorize(Roles = "Admin")]
+   public async Task<ActionResult> AddProgram(Guid id, CreateProgramDto dto){
+     var dept = await _ctx.Departments.FindAsync(id);
+     if(dept is null) return NotFound("Department not found.");
+
+     var program = new AlumniManagementSystem.Domain.AcademicProgram
+     {
+        ProgramId     = Guid.NewGuid(),
+        Name          = dto.Name,
+        Type          = dto.Type,
+        DurationYears = dto.DurationYears,
+        DepartmentId  = id,
+        IsActive      = dto.IsActive,
+     };
+
+     _ctx.Programs.Add(program);
+     await _ctx.SaveChangesAsync();
+
+     return Ok(new ProgramDto
+     {
+        ProgramId      = program.ProgramId,
+        Name           = program.Name,
+        Type           = program.Type,
+        DurationYears  = program.DurationYears,
+        IsActive       = program.IsActive,
+        DepartmentName = dept.Name,
+        DepartmentCode = dept.Code,
+        AlumniCount    = 0,
+     });
+   }
 }

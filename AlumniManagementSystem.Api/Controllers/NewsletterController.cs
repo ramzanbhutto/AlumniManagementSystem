@@ -27,8 +27,8 @@ public class NewsletterController : ControllerBase{
         TargetRole = n.TargetRole,
         CreatedAt = n.CreatedAt,
         SentAt = n.SentAt,
-        RecipientCount = n.Recipients.Count,
-        ReadCount = n.Recipients.Count(r => r.IsRead),
+        RecipientCount = n.Recipients?.Count ?? 0,
+        ReadCount = n.Recipients?.Count(r => r.IsRead) ?? 0,
       }));
   }
  
@@ -55,5 +55,39 @@ public class NewsletterController : ControllerBase{
         TargetRole = newsletter.TargetRole,
         CreatedAt = newsletter.CreatedAt,
       });
+  }
+
+  // Alumni/Guest: see newsletters sent to them
+  [HttpGet("my")]
+  public async Task<ActionResult> GetMy(){
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Guest";
+    var all = await _repo.GetAllAsync();
+    var filtered = all
+      .Where(n => n.Status == Domain.Enums.NewsletterStatus.Sent &&
+                  (n.TargetRole == "All" || n.TargetRole == role))
+      .Select(n => new NewsletterDto{
+        NewsletterId = n.NewsletterId,
+        Title = n.Title,
+        Content = n.Content,
+        Status = n.Status.ToString(),
+        TargetRole = n.TargetRole,
+        CreatedAt = n.CreatedAt,
+        SentAt = n.SentAt,
+        RecipientCount = n.Recipients?.Count ?? 0,
+        ReadCount = n.Recipients?.Count(r => r.IsRead) ?? 0,
+      });
+    return Ok(filtered);
+  }
+
+  // Admin: mark a newsletter as Sent
+  [HttpPost("{id:guid}/send")]
+  [Authorize(Roles = "Admin")]
+  public async Task<ActionResult> Send(Guid id){
+    var n = await _repo.GetByIdAsync(id);
+    if(n == null) return NotFound();
+    n.Status = Domain.Enums.NewsletterStatus.Sent;
+    n.SentAt = DateTime.UtcNow;
+    await _repo.SaveChangesAsync();
+    return Ok();
   }
 }

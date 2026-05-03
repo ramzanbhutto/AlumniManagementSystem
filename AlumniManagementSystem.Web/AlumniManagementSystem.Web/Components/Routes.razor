@@ -1,6 +1,23 @@
-﻿<Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }" NotFoundPage="typeof(Pages.NotFound)">
+﻿@using Microsoft.AspNetCore.Components.WebAssembly.Rendering
+@using AlumniManagementSystem.Web.Client.Layout
+
+<Router AppAssembly="@typeof(Program).Assembly"
+        AdditionalAssemblies="@(new[] { typeof(AlumniManagementSystem.Web.Client._Imports).Assembly })">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(AlumniManagementSystem.Web.Client.Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(AlumniManagementSystem.Web.Client.Layout.MainLayout)">
+            <MudStack Spacing="3" Style="padding:4rem;text-align:center">
+                <MudText Typo="Typo.h3" Style="color:#374151">404</MudText>
+                <MudText Style="color:#6b7280">Page not found</MudText>
+                <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Primary"
+                           Style="border-radius:8px;align-self:center">
+                    Go to Login
+                </MudButton>
+            </MudStack>
+        </LayoutView>
+    </NotFound>
 </Router>

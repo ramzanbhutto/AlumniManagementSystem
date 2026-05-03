@@ -18,6 +18,7 @@ public class DashboardController : ControllerBase{
   // Returns all counts/aggregates for the dashboard in one shot
   [HttpGet("stats")]
   public async Task<ActionResult> GetStats(){
+    var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
     var stats = new
       {
         totalAlumni= await _ctx.Alumnis.CountAsync(),
@@ -25,7 +26,8 @@ public class DashboardController : ControllerBase{
         upcomingEvents= await _ctx.Events.CountAsync(e => e.Status == Domain.Enums.EventStatus.Upcoming),
         activeJobs= await _ctx.JobPostings.CountAsync(j => j.IsActive),
         totalDonations= await _ctx.Donations.SumAsync(d => (decimal?)d.Amount) ?? 0,
-        unreadMessages= await _ctx.Messages.CountAsync(m => !m.IsRead && !m.IsDeleted),
+        totalMessages    = await _ctx.Messages.CountAsync(m => m.ReceiverId == userId && !m.IsDeleted),
+        unreadMessages= await _ctx.Messages.CountAsync(m => m.ReceiverId == userId && !m.IsRead && !m.IsDeleted),
         activeSurveys= await _ctx.Surveys.CountAsync(s => s.Status == Domain.Enums.SurveyStatus.Active),
         totalDepartments= await _ctx.Departments.CountAsync(),
         activePrograms= await _ctx.Programs.CountAsync(p => p.IsActive),

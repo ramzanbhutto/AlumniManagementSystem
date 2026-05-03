@@ -1,0 +1,187 @@
+@page "/login"
+@rendermode InteractiveWebAssembly
+@layout EmptyLayout
+@using System.ComponentModel.DataAnnotations
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@using System.Text.RegularExpressions
+<PageTitle>Login - Alumni Management System</PageTitle>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
+            background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 100%);padding:1rem">
+    <div style="width:100%;max-width:420px">
+        @* Logo *@
+        <div style="text-align:center;margin-bottom:2rem">
+            <MudAvatar Style="width:56px;height:56px;background:#2563eb;margin:0 auto 0.75rem">
+                <MudIcon Icon="@Icons.Material.Rounded.School"
+                         Style="color:white;font-size:1.75rem" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6"
+                     Style="font-weight:700;color:#111827;letter-spacing:-0.02em">
+                Alumni Management System
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280">
+                FAST-NUCES Peshawar
+            </MudText>
+        </div>
+
+@code{
+    private MudTheme _theme = new();
+    private bool _isDarkMode;
+}
+
+        <MudPaper Elevation="2" Style="border-radius:16px;padding:2rem;background:white">
+            <MudTabs @bind-ActivePanelIndex="_tab" Centered="true" Rounded="true"
+                     Color="Color.Primary">
+                @* ── Login Tab ── *@
+                <MudTabPanel Text="Sign In">
+                    <MudStack Spacing="3" Class="pt-4">
+                        @if(_loginError !=null){
+                            <MudAlert Severity="Severity.Error" Dense="true">@_loginError</MudAlert>
+                        }
+                        <MudTextField @bind-Value="_login.Email"
+                                      Label="Email address"
+                                      InputType="InputType.Email"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Rounded.Email"
+                                      Required="true"
+                                      Immediate="true" />
+                        <MudTextField @bind-Value="_login.Password"
+                                      Label="Password"
+                                      InputType="@(_showPwd ? InputType.Text : InputType.Password)"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showPwd
+                                          ? Icons.Material.Rounded.VisibilityOff
+                                          : Icons.Material.Rounded.Visibility)"
+                                      OnAdornmentClick="@(() => _showPwd = !_showPwd)"
+                                      Required="true" />
+                        <MudButton FullWidth="true" Variant="Variant.Filled"
+                                   Color="Color.Primary" Size="Size.Large"
+                                   OnClick="LoginAsync" Disabled="_loading"
+                                   Style="border-radius:8px;font-weight:600;text-transform:none;font-size:1rem">
+                            @if(_loading){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                            Sign In
+                        </MudButton>
+                    </MudStack>
+                </MudTabPanel>
+
+                @* ── Register Tab ── *@
+                <MudTabPanel Text="Register">
+                    <MudStack Spacing="3" Class="pt-4">
+                        @if(_regError !=null){
+                            <MudAlert Severity="Severity.Error" Dense="true">@_regError</MudAlert>
+                        }
+                        <MudGrid Spacing="2">
+                            <MudItem xs="6">
+                                <MudTextField @bind-Value="_reg.FirstName"
+                                              Label="First name"
+                                              Variant="Variant.Outlined"
+                                              Required="true" />
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudTextField @bind-Value="_reg.LastName"
+                                              Label="Last name"
+                                              Variant="Variant.Outlined"
+                                              Required="true" />
+                            </MudItem>
+                        </MudGrid>
+                        <MudTextField @bind-Value="_reg.Email"
+                                      Label="Email address"
+                                      InputType="InputType.Email"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Rounded.Email"
+                                      Required="true" />
+                        <MudTextField @bind-Value="_reg.RollNumber"
+                                      Label="Roll Number"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Rounded.Badge"
+                                      HelperText="Format: 24P-3051"
+                                      Required="true" />
+                        <MudTextField @bind-Value="_reg.Password"
+                                      Label="Password"
+                                      InputType="@(_showRegPwd ? InputType.Text : InputType.Password)"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(_showRegPwd
+                                          ? Icons.Material.Rounded.VisibilityOff
+                                          : Icons.Material.Rounded.Visibility)"
+                                      OnAdornmentClick="@(() => _showRegPwd = !_showRegPwd)"
+                                      HelperText="Min 8 chars, uppercase, number & symbol"
+                                      Required="true" />
+                        <MudNumericField T="int?" @bind-Value="_reg.GraduationYear"
+                                         Label="Graduation Year"
+                                         Variant="Variant.Outlined"
+                                         Min="1990" Max="2040"
+                                         HideSpinButtons="true"
+                                         Adornment="Adornment.Start"
+                                         AdornmentIcon="@Icons.Material.Rounded.CalendarToday" />
+                        <MudButton FullWidth="true" Variant="Variant.Filled"
+                                   Color="Color.Primary" Size="Size.Large"
+                                   OnClick="RegisterAsync" Disabled="_loading"
+                                   Style="border-radius:8px;font-weight:600;text-transform:none;font-size:1rem">
+                            @if(_loading){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                            Create Account
+                        </MudButton>
+                    </MudStack>
+                </MudTabPanel>
+            </MudTabs>
+        </MudPaper>
+
+        <MudText Align="Align.Center" Typo="Typo.caption"
+                 Style="color:#9ca3af;margin-top:1.5rem;display:block">
+            Alumni Management System © 2026
+        </MudText>
+    </div>
+</div>
+
+@code {
+    private int _tab= 0;
+    private bool _loading= false;
+    private bool _showPwd= false;
+    private bool _showRegPwd= false;
+    private string? _loginError= null;
+    private string? _regError  = null;
+
+    private LoginDto _login= new();
+    private RegisterDto _reg = new() { ProgramId = Guid.Empty };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(Auth.IsLoggedIn) Nav.NavigateTo("/dashboard");
+    }
+
+    private async Task LoginAsync(){
+        if (string.IsNullOrWhiteSpace(_login.Email) || string.IsNullOrWhiteSpace(_login.Password)){
+          _loginError= "Please enter email and password.";
+          return;
+        }
+        _loading = true; _loginError = null;
+        var (ok, err) = await Auth.LoginAsync(_login);
+        _loading = false;
+        if(ok){ Snackbar.Add("Welcome back!", Severity.Success); Nav.NavigateTo("/dashboard"); }
+        else _loginError = err ?? "Login failed. Check credentials.";
+    }
+
+    private async Task RegisterAsync(){
+        if(string.IsNullOrWhiteSpace(_reg.FirstName) ||
+            string.IsNullOrWhiteSpace(_reg.LastName)  ||
+            string.IsNullOrWhiteSpace(_reg.Email)     ||
+            string.IsNullOrWhiteSpace(_reg.Password)  ||
+            string.IsNullOrWhiteSpace(_reg.RollNumber))
+        {
+            _regError = "Please fill in all required fields.";
+            return;
+        }
+        _loading= true; _regError = null;
+        var (ok, err) = await Auth.RegisterAsync(_reg);
+        _loading = false;
+        if(ok){ Snackbar.Add("Account created! Welcome.", Severity.Success); Nav.NavigateTo("/dashboard"); }
+        else _regError = err ?? "Registration failed. Please check all fields.";
+    }
+}

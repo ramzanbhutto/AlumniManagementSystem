@@ -1,0 +1,165 @@
+@page "/admin/departments"
+@rendermode InteractiveWebAssembly
+@inject HttpClient Http
+@inject AuthService Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Departments</PageTitle>
+
+<MudStack Spacing="4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h5" Style="font-weight:600;letter-spacing:-0.02em">Departments & Programs</MudText>
+    </MudStack>
+
+    @if(_notAdmin){
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Style="border-radius:12px">
+            Admin access required.
+        </MudAlert>
+    }
+    else if(_loading){
+        <MudGrid Spacing="3">
+            @for(int i=0; i<4; i++){
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSkeleton Height="160px" Animation="Animation.Wave" Style="border-radius:12px" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else{
+        <MudGrid Spacing="3">
+            @foreach(var d in _departments){
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Elevation="0" Style="background:#CFD8DC;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:1.25rem;height:100%">
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween">
+                                <div style="width:40px;height:30px;border-radius:10px;background:rgba(79,142,247,0.1);display:flex;align-items:center;justify-content:center">
+                                    <MudText Style="font-size:0.8rem;font-weight:700;color:#4f8ef7">@d.Code</MudText>
+                                </div>
+                                <MudIconButton Icon="@Icons.Material.Rounded.AddCircleOutline"
+                                               Size="Size.Small" Color="Color.Primary"
+                                               Title="Add Program"
+                                               OnClick="@(() => OpenAddProgram(d))" />
+                            </MudStack>
+                            <div>
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600;color:#111827">@d.Name</MudText>
+                                @if(d.HodName != null){
+                                    <MudText Typo="Typo.caption" Style="color:#424242">HOD: @d.HodName</MudText>
+                                }
+                            </div>
+                            @if(d.Description != null){
+                                <MudText Typo="Typo.body2" Style="color:#424242;font-size:0.8rem">@d.Description</MudText>
+                            }
+                            <MudDivider Style="border-color:#E0E0E0" />
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                                    @d.ProgramCount program(s)
+                                </MudChip>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">
+                                    @d.AlumniCount alumni(s)
+                                </MudChip>
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudStack>
+
+@* ── Add Program Dialog ── *@
+@if(_showAddProgram && _targetDept != null){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0" Style="background:#CFD8DC;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:2rem;width:100%;max-width:440px">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+                <div>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600">Add Program</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#6b7280">to @_targetDept.Name</MudText>
+                </div>
+                <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small"
+                               OnClick="@(() => { _showAddProgram = false; _dto = new(); _targetDept = null; })" />
+            </MudStack>
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_dto.Name" Label="Program Name (e.g. BS Software Engineering)"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <NativeSelect Label="Type" Value="@_dto.Type" BgColor="#CFD8DC"
+                              ValueChanged="@((string? v) => _dto.Type = v ?? "BS")">
+                    <option value="BS">BS</option>
+                    <option value="MS">MS</option>
+                    <option value="PhD">PhD</option>
+                    <option value="BE">BE</option>
+                    <option value="ME">ME</option>
+                </NativeSelect>
+                <MudTextField @bind-Value="_dto.DurationYears" Label="Duration (Years)"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Number" />
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudSwitch T="bool" @bind-Value="_dto.IsActive" Color="Color.Primary" />
+                    <MudText Typo="Typo.body2" Style="color:#111827">Active</MudText>
+                </MudStack>
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Text"
+                               OnClick="@(() => { _showAddProgram = false; _dto = new(); _targetDept = null; })">
+                        Cancel
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="SaveProgramAsync" Disabled="_saving" Style="border-radius:8px">
+                        @if(_saving){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                        Add Program
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    private List<DepartmentDto> _departments = [];
+    private bool _loading = true, _notAdmin = false;
+    private bool _showAddProgram = false, _saving = false;
+    private DepartmentDto? _targetDept;
+    private CreateProgramDto _dto = new() { Type = "BS", DurationYears = 4, IsActive = true };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login", forceLoad: true); return; }
+        if(!Auth.IsAdmin){ _notAdmin = true; _loading = false; StateHasChanged(); return; }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync(){
+        try{ _departments = await Http.GetFromJsonAsync<List<DepartmentDto>>("api/departments") ?? []; }
+        catch{ }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private void OpenAddProgram(DepartmentDto dept){
+        _targetDept = dept;
+        _dto = new() { Type = "BS", DurationYears = 4, IsActive = true, DepartmentId = dept.DepartmentId };
+        _showAddProgram = true;
+    }
+
+    private async Task SaveProgramAsync(){
+        if(string.IsNullOrWhiteSpace(_dto.Name)){
+            Snackbar.Add("Program name is required.", Severity.Warning);
+            return;
+        }
+        _saving = true;
+        var r = await Http.PostAsJsonAsync($"api/departments/{_targetDept!.DepartmentId}/programs", _dto);
+        _saving = false;
+        if(r.IsSuccessStatusCode){
+            Snackbar.Add("Program added successfully!", Severity.Success);
+            _showAddProgram = false;
+            _dto = new();
+            _targetDept = null;
+            await LoadAsync();
+        }
+        else{
+            var err = await r.Content.ReadAsStringAsync();
+            Snackbar.Add(err ?? "Failed to add program.", Severity.Error);
+        }
+    }
+}

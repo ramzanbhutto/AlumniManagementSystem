@@ -1,0 +1,65 @@
+@inject AlumniApiService Svc
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.subtitle1" Style="font-weight:600">Add Alumni</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_valid">
+            <MudStack Spacing="3">
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="_dto.FirstName" Label="First Name"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Required="true" RequiredError="Required" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="_dto.LastName" Label="Last Name"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Required="true" RequiredError="Required" />
+                    </MudItem>
+                </MudGrid>
+                <MudTextField @bind-Value="_dto.Email" Label="Email"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Email" Required="true" RequiredError="Required" />
+                <MudTextField @bind-Value="_dto.RollNumber" Label="Roll Number"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              HelperText="e.g. 24P-3051"
+                              Required="true" RequiredError="Required" />
+                <MudNumericField @bind-Value="_dto.GraduationYear" Label="Graduation Year"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense"
+                                 Min="1990" Max="2040" HideSpinButtons="true" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   OnClick="SubmitAsync" Disabled="_saving" Style="border-radius:8px">
+            @if(_saving){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            Add Alumni
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private CreateAlumniDto _dto  = new();
+    private MudForm? _form;
+    private bool _valid = false, _saving = false;
+
+    private async Task SubmitAsync(){
+        await _form!.ValidateAsync();
+        if(!_valid) return;
+        _saving = true;
+        var (ok, err) = await Svc.CreateAsync(_dto);
+        _saving = false;
+        if(ok){ Snackbar.Add("Alumni added!", Severity.Success); MudDialog.Close(DialogResult.Ok(true)); }
+        else Snackbar.Add(err ?? "Error", Severity.Error);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

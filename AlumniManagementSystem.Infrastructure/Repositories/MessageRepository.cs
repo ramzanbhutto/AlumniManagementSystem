@@ -24,4 +24,5 @@ public class MessageRepository : IMessageRepository{
  
   public async Task AddAsync(Message message) => await _ctx.Messages.AddAsync(message);
   public async Task SaveChangesAsync() => await _ctx.SaveChangesAsync();
+  public async Task<Message?> GetByIdAsync(Guid id) => await _ctx.Messages.FindAsync(id);
 }

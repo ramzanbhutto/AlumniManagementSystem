@@ -2,8 +2,10 @@ using AlumniManagementSystem.Application.Services;
 using AlumniManagementSystem.Domain;
 using AlumniManagementSystem.Domain.Enums;
 using AlumniManagementSystem.Shared;
+using AlumniManagementSystem.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
  
 namespace AlumniManagementSystem.Api.Controllers;
  
@@ -12,7 +14,11 @@ namespace AlumniManagementSystem.Api.Controllers;
 [Authorize]
 public class JobsController : ControllerBase{
   private readonly JobService _svc;
-  public JobsController(JobService svc) => _svc = svc;
+  private readonly IAlumniRepository _alumniRepo;
+  public JobsController(JobService svc, IAlumniRepository alumniRepo){
+    _svc= svc; 
+    _alumniRepo= alumniRepo; 
+  } 
  
   [HttpGet]
   [AllowAnonymous]
@@ -38,26 +44,27 @@ public class JobsController : ControllerBase{
   }
  
   [HttpPost]
-  public async Task<ActionResult> Create(CreateJobPostingDto dto){
-    if(!Enum.TryParse<JobType>(dto.JobType, out var jobType)) return BadRequest("Invalid job type. Valid: FullTime, PartTime, Remote, Contract");
- 
-    // Get alumniId from JWT claims (you store it or look it up)
-    var userId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
-    // pass userId as PostedBy — in production resolve to AlumniId via service
-    var job = new JobPosting
-      {
-        JobId= Guid.NewGuid(),
-        Title= dto.Title,
-        Company= dto.Company,
-        Description= dto.Description,
-        Location= dto.Location,
-        JobType= jobType,
-        SalaryRange= dto.SalaryRange,
-        ApplicationUrl= dto.ApplicationUrl,
-        Deadline= dto.Deadline,
-        PostedBy= userId, // resolve to AlumniId in real impl
-      };
-    await _svc.CreateAsync(job);
-    return Ok(new { job.JobId });
-  }
+  public async Task<ActionResult> Create(CreateJobPostingDto dto){
+    if(!Enum.TryParse<JobType>(dto.JobType, out var jobType)) return BadRequest("Invalid job type.");
+
+    var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+    var alumni = await _alumniRepo.GetByUserIdAsync(userId);
+    if(alumni==null) return BadRequest("Alumni profile not found for this user.");
+    
+    var job = new JobPosting
+    {
+        JobId = Guid.NewGuid(),
+        Title = dto.Title,
+        Company = dto.Company,
+        Description = dto.Description,
+        Location = dto.Location,
+        JobType = jobType,
+        SalaryRange = dto.SalaryRange,
+        ApplicationUrl = dto.ApplicationUrl,
+        Deadline = dto.Deadline,
+        PostedBy = alumni.AlumniId, 
+    };
+    await _svc.CreateAsync(job);
+    return Ok(new { job.JobId });
+  } 
 }

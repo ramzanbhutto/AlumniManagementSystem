@@ -10,4 +10,6 @@ public interface IEventRepository{
   void Update(Event ev);
   void Delete(Event ev);
   Task SaveChangesAsync();
+  Task<EventRSVP?> GetRsvpAsync(Guid eventId, Guid alumniId);
+  Task AddRsvpAsync(EventRSVP rsvp);
 }

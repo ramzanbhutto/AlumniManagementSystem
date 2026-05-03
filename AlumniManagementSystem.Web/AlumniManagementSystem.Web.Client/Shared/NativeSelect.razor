@@ -1,0 +1,32 @@
+<div style="position:relative">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label style="display:block;font-size:0.75rem;color:#6b7280;margin-bottom:4px;font-weight:500">
+            @Label
+        </label>
+    }
+    <select value="@Value"
+            @onchange="OnChanged"
+            style="width:100%;padding:8px 32px 8px 12px;border:1px solid #b0b0b0;border-radius:4px;
+                   background-color:@BgColor;
+                   background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22><path fill=%22%236b7280%22 d=%22M7 10l5 5 5-5z%22/></svg>');
+                   background-repeat:no-repeat;background-position:right 10px center;background-size:16px;
+                   appearance:none;-webkit-appearance:none;
+                   font-size:0.875rem;color:#111827;cursor:pointer;
+                   font-family:inherit;outline:none;height:38px;width:100%">
+        @ChildContent
+    </select>
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string BgColor { get; set; } = "#E0E0E0";
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnChanged(ChangeEventArgs e){
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

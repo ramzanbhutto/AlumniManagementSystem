@@ -1,0 +1,355 @@
+@page "/alumni"
+@rendermode InteractiveWebAssembly
+@inject NavigationManager Nav
+@inject AlumniApiService Svc
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+
+<PageTitle>Alumni Directory</PageTitle>
+
+<MudStack Spacing="4">
+    @* Header *@
+    <MudStack Row="true" AlignItems="AlignItems.Start" Justify="Justify.SpaceBetween" Class="flex-wrap">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:600;letter-spacing:-0.02em">Alumni Directory</MudText>
+            <MudText Typo="Typo.body2" Style="color:#6b7280">
+                @_filtered.Count alumni found
+            </MudText>
+        </div>
+        @if(Auth.IsAdmin){
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Rounded.PersonAdd"
+                       OnClick="@(() => _showCreate = true)"
+                       Style="border-radius:8px">
+                Add Alumni
+            </MudButton>
+        }
+    </MudStack>
+
+    @if(!Auth.IsAdmin){
+    <MudPaper Elevation="0" Style="background:#E8EAF6;border-radius:12px;padding:1rem">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Rounded.AccountCircle" Style="color:#4f8ef7" />
+            <MudText Typo="Typo.body2" Style="color:#111827">Your profile status:</MudText>
+            @{
+                var me = _all.FirstOrDefault(a => a.Id == Auth.AlumniId);
+            }
+            @if(me != null){
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(me.IsProfileComplete ? Color.Success : Color.Warning)"
+                         Variant="Variant.Filled">
+                    @(me.IsProfileComplete ? "Complete" : "Incomplete - please update your profile")
+                </MudChip>
+            }
+        </MudStack>
+    </MudPaper>
+  }
+
+    @* Filters bar *@
+    <MudPaper Elevation="0" Style="background:#E8EAF6;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem">
+        <MudGrid Spacing="2" AlignItems="AlignItems.Center">
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_search" Placeholder="Search name or roll number..."
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Rounded.Search"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              Immediate="true" @bind-Value:after="ApplyFilters" />
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <NativeSelect Label="Department" Value="@_filterDept" BgColor="#E8EAF6"
+                              ValueChanged="@((string? v) => { _filterDept = v ?? ""; ApplyFilters(); })">
+                    <option value="">All</option>
+                    <option value="SE">SE</option>
+                    <option value="CS">CS</option>
+                    <option value="EE">EE</option>
+                    <option value="AI">AI</option>
+                </NativeSelect>
+            </MudItem>
+            <MudItem xs="6" sm="2">
+                <NativeSelect Label="Gender" Value="@_filterGender" BgColor="#E8EAF6"
+                              ValueChanged="@((string? v) => { _filterGender = v ?? ""; ApplyFilters(); })">
+                    <option value="">All</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </NativeSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <div>
+                    <MudText Typo="Typo.caption" Style="color:#6b7280;display:flex;justify-content:space-between">
+                        <span>Graduation Year</span>
+                        <span style="color:#4f8ef7">@_yearMin – @_yearMax</span>
+                    </MudText>
+                    <MudSlider T="int" @bind-Value="_yearMin" @bind-Value:after="ApplyFilters"
+                               Min="2015" Max="@_yearMax" Step="1" Color="Color.Primary" />
+                    <MudSlider T="int" @bind-Value="_yearMax" @bind-Value:after="ApplyFilters"
+                               Min="@_yearMin" Max="2030" Step="1" Color="Color.Primary" />
+                </div>
+            </MudItem>
+        </MudGrid>
+        @if(Auth.IsAdmin){
+        <MudStack Row="true" Spacing="2" Class="mt-2">
+            <MudChip T="string" OnClick="@(() => { _filterProfile = null; ApplyFilters(); })"
+                     Color="@(_filterProfile == null ? Color.Primary : Color.Default)"
+                     Variant="@(_filterProfile == null ? Variant.Filled : Variant.Outlined)"
+                     Size="Size.Small">All</MudChip>          
+                     
+            <MudChip T="string" OnClick="@(() => { _filterProfile = true; ApplyFilters(); })"
+                     Color="@(_filterProfile == true ? Color.Success : Color.Default)"
+                     Variant="@(_filterProfile == true ? Variant.Filled : Variant.Outlined)"
+                     Size="Size.Small">Profile Complete</MudChip>
+            <MudChip T="string" OnClick="@(() => { _filterProfile = false; ApplyFilters(); })"
+                     Color="@(_filterProfile == false ? Color.Warning : Color.Default)"
+                     Variant="@(_filterProfile == false ? Variant.Filled : Variant.Outlined)"
+                     Size="Size.Small">Incomplete</MudChip>
+        </MudStack>
+        }
+    </MudPaper>
+
+    @* Table *@
+    @if(_loading){
+        <MudSkeleton Height="400px" Animation="Animation.Wave" Style="border-radius:12px" />
+    }
+    else if(!_filtered.Any()){
+        <MudPaper Elevation="0" Style="background:#E8EAF6;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:3rem;text-align:center">
+            <MudIcon Icon="@Icons.Material.Rounded.SearchOff" Style="font-size:3rem;color:#374151;margin-bottom:0.75rem" />
+            <MudText Typo="Typo.body1" Style="color:#6b7280">No alumni found</MudText>
+        </MudPaper>
+    }
+    else{
+        <MudPaper Elevation="0" Style="background:#E8EAF6;border:1px solid rgba(255,255,255,0.07);border-radius:12px;overflow:hidden">
+            <MudDataGrid Items="@_filtered" Dense="true" Hover="true" Striped="false"
+                         SortMode="SortMode.Single" Filterable="false"
+                         Style="background:transparent">
+                <Columns>
+                    <PropertyColumn Property="x => x.RollNumber" Title="Roll No"
+                                    CellStyle="color:#111111" />
+                    <TemplateColumn Title="Name">
+                        <CellTemplate>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudAvatar Size="Size.Small"
+                                           Style="background:rgba(79,142,247,0.1);color:#4f8ef7;font-size:0.7rem;flex-shrink:0;width:28px;height:28px">
+                                    @context.Item.FirstName[0]@context.Item.LastName[0]
+                                </MudAvatar>
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color:#111111">
+                                        @context.Item.FirstName @context.Item.LastName
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#6b7280">
+                                        @context.Item.Email
+                                    </MudText>
+                                </div>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Program">
+                        <CellTemplate>
+                            <div>
+                                <MudText Typo="Typo.body2" Style="color:#111111">@(context.Item.ProgramName ?? "—")</MudText>
+                                <MudText Typo="Typo.caption" Style="color:#6b7280">@(context.Item.DepartmentCode ?? "")</MudText>
+                            </div>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.GraduationYear" Title="Graduation Year"
+                                    CellStyle="color:#111111" />
+                    <TemplateColumn Title="Current Role">
+                        <CellTemplate>
+                            @if(context.Item.CurrentJobTitle != null){
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color:#111111">@context.Item.CurrentJobTitle</MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#6b7280">@context.Item.CurrentCompany</MudText>
+                                </div>
+                            }
+                            else{ <MudText Style="color:#9ca3af">—</MudText> }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    @if(Auth.IsAdmin){
+                    <TemplateColumn Title="Status">
+                        <CellTemplate>
+                            <MudChip T="string" Size="Size.Small"
+                                     Color="@(context.Item.IsProfileComplete ? Color.Success : Color.Warning)"
+                                     Variant="Variant.Text">
+                                @(context.Item.IsProfileComplete ? "Complete" : "Incomplete")
+                            </MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                        <TemplateColumn Title="" CellStyle="text-align:right">
+                            <CellTemplate>
+                                <MudIconButton Icon="@Icons.Material.Rounded.Delete"
+                                               Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => AskDelete(context.Item))" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                    }
+                </Columns>
+                <PagerContent>
+                    <MudDataGridPager T="AlumniDto" />
+                </PagerContent>
+            </MudDataGrid>
+        </MudPaper>
+    }
+</MudStack>
+
+@* ── Add Alumni Dialog ── *@
+@if(_showCreate){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0" Style="background:#E8EAF6;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:2rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600">Add Alumni</MudText>
+                <MudIconButton Icon="@Icons.Material.Rounded.Close" Size="Size.Small"
+                               OnClick="@(() => { _showCreate = false; _newAlumni = new(); })" />
+            </MudStack>
+            <MudStack Spacing="3">
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="_newAlumni.FirstName" Label="First Name"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField @bind-Value="_newAlumni.LastName" Label="Last Name"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" Required="true"/>
+                    </MudItem>
+                </MudGrid>
+                <MudTextField @bind-Value="_newAlumni.Email" Label="Email"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Email" 
+                              Required="true" RequiredError="Email is required!" />
+                <MudTextField @bind-Value="_newAlumni.RollNumber" Label="Roll Number (e.g. 24P-3051)"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" 
+                              Required="true" RequiredError="Roll Number is required!" />
+                <MudTextField @bind-Value="_newAlumni.Password" Label="Password"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Password" 
+                              Required="true" RequiredError="min length 6: 1 Small, 1 Capital, 1 number and 1 special character" />
+                <MudTextField @bind-Value="_newAlumni.GraduationYear" Label="Graduation Year"
+                              Variant="Variant.Outlined" Margin="Margin.Dense"
+                              InputType="InputType.Number" Required="true" />
+                <NativeSelect Label="Program" Value="@_newAlumni.ProgramId.ToString()" BgColor="#E8EAF6"
+                              ValueChanged="@((string? v) => _newAlumni.ProgramId = Guid.TryParse(v, out var g) ? g : Guid.Empty)">
+                              <option value="">Select Program</option>
+                              @foreach(var p in _programs){
+                                <option value="@p.ProgramId">@p.Name</option>
+                              }
+                </NativeSelect>
+                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                    <MudButton Variant="Variant.Text"
+                               OnClick="@(() => { _showCreate = false; _newAlumni = new(); })">
+                        Cancel
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               OnClick="CreateAsync" Disabled="_saving" Style="border-radius:8px">
+                        @if(_saving){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                        Add Alumni
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@* ── Delete Confirm Dialog ── *@
+@if(_showDelete && _deleteTarget != null){
+    <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
+    <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
+        <MudPaper Elevation="0" Style="background:#E8EAF6;border-radius:16px;padding:2rem;width:100%;max-width:400px">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600;margin-bottom:0.5rem">Confirm Delete</MudText>
+            <MudText Typo="Typo.body2" Style="color:#374151;margin-bottom:1.5rem">
+                Delete <strong>@_deleteTarget.FirstName @_deleteTarget.LastName</strong>? This cannot be undone.
+            </MudText>
+            <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2">
+                <MudButton Variant="Variant.Text" OnClick="@(() => { _showDelete = false; _deleteTarget = null; })">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Error"
+                           OnClick="ConfirmDeleteAsync" Disabled="_deleting" Style="border-radius:8px">
+                    @if(_deleting){ <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+                    Delete
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </div>
+}
+
+@code {
+    private List<AlumniDto> _all = [];
+    private List<AlumniDto> _filtered = [];
+    private List<ProgramDto> _programs = [];
+    private bool _loading = true;
+    private bool _showCreate = false, _saving = false;
+    private bool _showDelete = false, _deleting = false;
+    private AlumniDto? _deleteTarget;
+    private string _search = "";
+    private string _filterDept = "";
+    private string _filterGender = "";
+    private bool? _filterProfile = null;
+    private int _yearMin = 2015;
+    private int _yearMax = 2030;
+    private RegisterDto _newAlumni = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender){
+        if(!firstRender) return;
+        await Auth.InitAsync();
+        if(!Auth.IsLoggedIn){ Nav.NavigateTo("/login"); return; }
+        _programs = await Svc.GetProgramsAsync();
+        _all = await Svc.GetAllAsync();
+        ApplyFilters();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private void ApplyFilters(){
+        _filtered = _all.Where(a =>
+        {
+            var name = $"{a.FirstName} {a.LastName} {a.RollNumber}".ToLower();
+            if(!string.IsNullOrEmpty(_search) && !name.Contains(_search.ToLower())) return false;
+            if(!string.IsNullOrEmpty(_filterDept) && a.DepartmentCode != _filterDept) return false;
+            if(!string.IsNullOrEmpty(_filterGender) && a.Gender != _filterGender) return false;
+            if(_filterProfile.HasValue && a.IsProfileComplete != _filterProfile.Value) return false;
+            if(a.GraduationYear.HasValue && (a.GraduationYear < _yearMin || a.GraduationYear > _yearMax)) return false;
+            return true;
+        }).ToList();
+        StateHasChanged();
+    }
+
+    private async Task CreateAsync(){
+    if(string.IsNullOrWhiteSpace(_newAlumni.FirstName)  ||
+       string.IsNullOrWhiteSpace(_newAlumni.LastName)   ||
+       string.IsNullOrWhiteSpace(_newAlumni.Email)      ||
+       string.IsNullOrWhiteSpace(_newAlumni.RollNumber) ||
+       string.IsNullOrWhiteSpace(_newAlumni.Password)   ||
+       _newAlumni.ProgramId == Guid.Empty){
+        Snackbar.Add("All fields including Program are required.", Severity.Warning);
+        return;
+    }
+    _saving = true;
+    var (ok, err) = await Svc.RegisterAlumniAsync(_newAlumni);
+    _saving = false;
+    if(ok){
+        Snackbar.Add("Alumni added successfully!", Severity.Success);
+        _showCreate = false;
+        _newAlumni = new();
+        _all = await Svc.GetAllAsync();
+        ApplyFilters();
+    }
+    else Snackbar.Add(err ?? "Failed to add alumni.", Severity.Error);
+  }
+
+    private void AskDelete(AlumniDto a){
+        _deleteTarget = a;
+        _showDelete = true;
+    }
+
+    private async Task ConfirmDeleteAsync(){
+        if(_deleteTarget == null) return;
+        _deleting = true;
+        var ok = await Svc.DeleteAsync(_deleteTarget.Id);
+        _deleting = false;
+        if(ok){
+            _all.Remove(_deleteTarget);
+            ApplyFilters();
+            Snackbar.Add("Alumni deleted.", Severity.Success);
+        }
+        else Snackbar.Add("Failed to delete alumni.", Severity.Error);
+        _showDelete = false;
+        _deleteTarget = null;
+    }
+}
