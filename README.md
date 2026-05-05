@@ -33,9 +33,9 @@ MySQL, following **CLEAN ARCHITECTURE** principles for strict separation of conc
 
 | Layer | Technology |
 |---|---|
-| Frontend | Blazor WebAssembly (.NET 10) |
+| Frontend | Blazor Web App (.NET 10) |
 | UI Components | MudBlazor 9.4.0 |
-| Backend | ASP.NET Core Web API (.NET 10) |
+| Backend | ASP.NET Core (.NET 10) |
 | ORM | Entity Framework Core (Pomelo MySQL provider) |
 | Database | MySQL 8+ |
 | Auth | JWT Bearer Tokens (60-minutes expiry, HS256) |
@@ -89,6 +89,7 @@ AlumniManagementSystem/
 Web.Client      →  Shared
 Web             →  Web.Client, Shared
 API             →  Application, Infrastructure, Shared
+Shared          →  (nothing)
 Infrastructure  →  Application
 Application     →  Domain
 Domain          →  (nothing)
@@ -115,8 +116,6 @@ Domain          →  (nothing)
 - Take surveys
 
 **Guest**
-- View public alumni directory (limited fields)
-- View upcoming public events
 - Register for an account
 
 ---
@@ -352,11 +351,11 @@ dotnet run
 
 ---
 
-## User Registration Rules
+## Password Rules
 
 | Rule | Requirement |
 |---|---|
-| Minimum length | At least 6 characters |
+| Minimum length | At least 8 characters |
 | Uppercase letter | At least 1 (A–Z) |
 | Lowercase letter | At least 1 (a–z) |
 | Number | At least 1 (0–9) |
@@ -365,7 +364,7 @@ dotnet run
 **Other rules:**
 - Email must be unique and in valid format (e.g. `user@example.com`)
 - First name and last name are required
-- Graduation year must be a valid 4-digit year and not in the future
+- Graduation year must be a valid 4-digit year
 
 ---
 
@@ -375,7 +374,7 @@ dotnet run
 |---|---|
 | **Admin** | Full access — manage users, view all data, assign roles, manage events/donations/jobs |
 | **Alumni** | Manage own profile, RSVP events, track donations, browse job board, messaging, surveys |
-| **Guest** | Read-only access to public directory and public events; can register |
+| **Guest** | Can register |
 
 New accounts are assigned the **Alumni** role by default. An Admin must manually promote a user via the admin panel or directly in the database:
 
