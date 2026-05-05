@@ -33,5 +33,10 @@ public class EventRepository : IEventRepository{
 
   public async Task<EventRSVP?> GetRsvpAsync(Guid eventId, Guid alumniId)  => await _ctx.EventRSVPs.FirstOrDefaultAsync(r => r.EventId == eventId && r.AlumniId == alumniId);
   public async Task AddRsvpAsync(EventRSVP rsvp) => await _ctx.EventRSVPs.AddAsync(rsvp);
+  
+  public Task UpdateAsync(Event ev){
+    _ctx.Events.Update(ev);
+    return Task.CompletedTask; 
+  }
 
 }

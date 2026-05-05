@@ -22,4 +22,10 @@ public class EventService{
     await _repo.SaveChangesAsync();
     return ev;
   }
+
+  public async Task UpdateAsync(Event ev){
+    await _repo.UpdateAsync(ev);
+    await _repo.SaveChangesAsync();
+  }
+
 }

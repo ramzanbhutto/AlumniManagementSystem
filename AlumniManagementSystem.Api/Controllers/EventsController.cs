@@ -38,6 +38,11 @@ public class EventsController : ControllerBase{
     if(alumni==null) return BadRequest("Alumni profile not found.");
     var existing = await _svc.GetRsvpAsync(id, alumni.AlumniId);
     if(existing != null)  return Conflict(new { message = "You have already RSVPed to this event." });
+  
+    var ev= await _svc.GetByIdAsync(id);
+    if(ev==null) return NotFound();
+    if(ev.Capacity.HasValue && (ev.RSVPs?.Count ?? 0) >= ev.Capacity.Value)
+         return BadRequest(new { message = "Event is at full capacity." });
     var rsvp = new EventRSVP{
       RsvpId   = Guid.NewGuid(),
       EventId  = id,
@@ -69,6 +74,16 @@ public class EventsController : ControllerBase{
     return Ok(new { ev.EventId });
   }
 
+   [HttpPatch("{id:guid}/cancel")]
+   [Authorize(Roles = "Admin")]
+   public async Task<ActionResult> Cancel(Guid id){
+     var ev = await _svc.GetByIdAsync(id);
+     if(ev == null) return NotFound();
+     ev.Status = EventStatus.Cancelled;
+     await _svc.UpdateAsync(ev);
+     return Ok(new { message = "Event cancelled." });
+   }
+
     private static EventDto MapEvent(Event e) => new(){
       EventId= e.EventId,
       Title= e.Title,
@@ -78,10 +93,18 @@ public class EventsController : ControllerBase{
       Capacity= e.Capacity,
       RegistrationDeadline= e.RegistrationDeadline,
       EventType= e.EventType.ToString(),
-      Status= e.Status.ToString(),
+      Status= ComputeStatus(e).ToString(),
       RsvpCount= e.RSVPs?.Count ?? 0,
       AttendingCount= e.RSVPs?.Count(r => r.Status == RsvpStatus.Attending) ?? 0,
       CheckedInCount= e.RSVPs?.Count(r => r.CheckedIn) ?? 0,
     };
+
+    private static EventStatus ComputeStatus(Event e){
+      if(e.Status==EventStatus.Cancelled) return EventStatus.Cancelled;
+      var now = DateTime.UtcNow;
+      if(e.EventDate.Date>now.Date) return EventStatus.Upcoming;
+      if(e.EventDate.Date==now.Date) return EventStatus.Ongoing;
+      return EventStatus.Completed;
+    }
 
 }

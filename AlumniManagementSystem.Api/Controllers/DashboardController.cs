@@ -23,14 +23,16 @@ public class DashboardController : ControllerBase{
       {
         totalAlumni= await _ctx.Alumnis.CountAsync(),
         profilesComplete= await _ctx.Alumnis.CountAsync(a => a.IsProfileComplete),
-        upcomingEvents= await _ctx.Events.CountAsync(e => e.Status == Domain.Enums.EventStatus.Upcoming),
-        activeJobs= await _ctx.JobPostings.CountAsync(j => j.IsActive),
+        upcomingEvents= await _ctx.Events.CountAsync(e => e.Status == Domain.Enums.EventStatus.Upcoming && e.EventDate.Date >= DateTime.UtcNow.Date),
+        activeJobs= await _ctx.JobPostings.CountAsync(j => j.IsActive && (j.Deadline == null || j.Deadline.Value >= DateOnly.FromDateTime(DateTime.UtcNow))),
         totalDonations= await _ctx.Donations.SumAsync(d => (decimal?)d.Amount) ?? 0,
         totalMessages    = await _ctx.Messages.CountAsync(m => m.ReceiverId == userId && !m.IsDeleted),
         unreadMessages= await _ctx.Messages.CountAsync(m => m.ReceiverId == userId && !m.IsRead && !m.IsDeleted),
-        activeSurveys= await _ctx.Surveys.CountAsync(s => s.Status == Domain.Enums.SurveyStatus.Active),
+        activeSurveys= await _ctx.Surveys.CountAsync(s => s.Status == Domain.Enums.SurveyStatus.Active && (s.Deadline == null || s.Deadline.Value >= DateTime.UtcNow)),
         totalDepartments= await _ctx.Departments.CountAsync(),
         activePrograms= await _ctx.Programs.CountAsync(p => p.IsActive),
+        totalSurveys= await _ctx.Surveys.CountAsync(),
+        totalSurveyResponses= await _ctx.SurveyResponses.CountAsync(),
       };
      return Ok(stats);
     }

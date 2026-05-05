@@ -20,4 +20,11 @@ public class EventApiService{
     return (false, body.Contains("already") ? "You already RSVPed to this event." : "Failed to RSVP.");
   }
 
+  public async Task<(bool, string?)> CancelAsync(Guid eventId){
+    var res= await _http.PatchAsync($"api/events/{eventId}/cancel", null);
+    if(res.IsSuccessStatusCode) return (true, null);
+    var err= await res.Content.ReadAsStringAsync();
+    return (false, err);
+  }
+
 }

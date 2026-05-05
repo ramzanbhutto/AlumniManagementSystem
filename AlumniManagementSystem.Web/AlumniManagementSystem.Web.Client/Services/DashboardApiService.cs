@@ -23,6 +23,8 @@ public class DashboardStatsDto{
   public int ActiveSurveys { get; set; }
   public int TotalDepartments { get; set; }
   public int ActivePrograms { get; set; }
+  public int TotalSurveys { get; set; }
+  public int TotalSurveyResponses { get; set; }
 }
 public class YearCountDto{ public int? Year { get; set; } public int Count { get; set; } }
 public class DeptCountDto{ public string Department { get; set; }= ""; public int Count { get; set; } }

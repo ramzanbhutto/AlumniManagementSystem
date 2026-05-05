@@ -10,7 +10,7 @@
 
 <MudStack Spacing="4">
 
-    @* ── Header ── *@
+    @* Header *@
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-wrap">
         <div>
             <MudText Typo="Typo.h5" Style="font-weight:700;letter-spacing:-0.02em;color:#111827">Events</MudText>
@@ -26,7 +26,7 @@
         }
     </MudStack>
 
-    @* ── Filters ── *@
+    @* Filters *@
     <MudPaper Elevation="0" Style="background:#E8EAF6;border:1px solid #d1d5db;border-radius:14px;padding:1.1rem">
         <MudGrid Spacing="2" AlignItems="AlignItems.Center">
             <MudItem xs="12" sm="4">
@@ -61,7 +61,7 @@
         </MudGrid>
     </MudPaper>
 
-    @* ── Cards grid ── *@
+    @* Cards grid *@
     @if(_loading){
         <MudGrid Spacing="3">
             @for(int i = 0; i < 6; i++){
@@ -152,23 +152,46 @@
                                     }
                                 </MudStack>
 
+                                @{
+                                   var isFull = e.Capacity.HasValue && e.RsvpCount >= e.Capacity.Value;
+                                 }
+
                                 @if(e.Status == "Upcoming" && Auth.IsAlumni){
-                                    @if(_myRsvps.Contains(e.EventId)){
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Success"
-                                                 Variant="Variant.Filled"
-                                                 Style="font-size:0.68rem;height:22px;font-weight:700">
+                                  @if(_myRsvps.Contains(e.EventId)){
+                                   <MudChip T="string" Size="Size.Small" Color="Color.Success"
+                                            Variant="Variant.Filled"
+                                            Style="font-size:0.68rem;height:22px;font-weight:700">
                                             ✓ RSVPed
-                                        </MudChip>
-                                    }
-                                    else{
-                                        <MudButton Size="Size.Small" Variant="Variant.Filled"
-                                                   Color="Color.Primary"
-                                                   Style="border-radius:7px;text-transform:none;font-weight:600;font-size:0.75rem"
-                                                   OnClick="@(() => DoRsvpAsync(e.EventId))">
+                                   </MudChip>
+                                 }
+                                 else if(isFull){
+                                   <MudChip T="string" Size="Size.Small" Color="Color.Error"
+                                            Variant="Variant.Filled"
+                                            Style="font-size:0.68rem;height:22px;font-weight:700">
+                                            Full
+                                  </MudChip>
+                               }
+                               else{
+                                 <MudButton Size="Size.Small" Variant="Variant.Filled"
+                                            Color="Color.Primary"
+                                            Style="border-radius:7px;text-transform:none;font-weight:600;font-size:0.75rem"
+                                            OnClick="@(() => DoRsvpAsync(e.EventId))">
                                             RSVP →
-                                        </MudButton>
-                                    }
-                                }
+                                 </MudButton>
+                              } 
+                            }
+                              @if(Auth.IsAdmin && e.Status != "Cancelled" && e.Status != "Completed"){
+                               <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                          Color="Color.Error"
+                                          Style="border-radius:7px;text-transform:none;font-weight:600;font-size:0.75rem"
+                                          Disabled="@(_cancelling == e.EventId)"
+                                          OnClick="@(() => DoCancelAsync(e.EventId))">
+                                          @if(_cancelling == e.EventId){
+                                               <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                                          }
+                                   Cancel
+                             </MudButton>
+                            }  
                             </MudStack>
 
                         </MudStack>
@@ -180,9 +203,7 @@
 
 </MudStack>
 
-@* ══════════════════════════════════════════════════════
-   CREATE EVENT DIALOG (Admin)
-═══════════════════════════════════════════════════════ *@
+@* CREATE EVENT DIALOG (Admin) *@
 @if(_showCreate && Auth.IsAdmin){
     <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
     <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
@@ -290,24 +311,25 @@
 </style>
 
 @code {
-    private List<EventDto> _all      = [];
+    private List<EventDto> _all = [];
     private List<EventDto> _filtered = [];
-    private HashSet<Guid>  _myRsvps  = [];
+    private HashSet<Guid> _myRsvps = [];
     private bool _loading = true;
     private bool _showCreate = false;
     private bool _saving= false;
     private bool _valid = false;
     private bool _upcomingOnly = false;
-    private string _search       = "";
-    private string _filterType   = "";
+    private string _search= "";
+    private string _filterType= "";
     private string _filterStatus = "";
     private MudForm?  _form;
     private CreateEventDto _dto = new();
     private DateTime? _eventDate= DateTime.Today.AddDays(7);
     private TimeSpan? _eventTime = new TimeSpan(18, 0, 0);
-    private DateTime? _regDeadline = null;
+    private DateTime? _regDeadline= null;
+    private Guid? _cancelling= null;
 
-    private string[] _types    = ["Reunion","Seminar","CareerFair","Social","Workshop"];
+    private string[] _types = ["Reunion","Seminar","CareerFair","Social","Workshop"];
     private string[] _statuses = ["Upcoming","Ongoing","Completed","Cancelled"];
 
     protected override async Task OnAfterRenderAsync(bool firstRender){
@@ -367,6 +389,18 @@
             Snackbar.Add("RSVP confirmed!", Severity.Success);
         }
         else Snackbar.Add(err ?? "Failed to RSVP.", Severity.Error);
+    }
+
+    private async Task DoCancelAsync(Guid eventId){
+     _cancelling= eventId;
+     var (ok, err)= await Svc.CancelAsync(eventId);
+     _cancelling= null;
+     if(ok){
+       _all= await Svc.GetAllAsync();
+       ApplyFilters();
+       Snackbar.Add("Event cancelled.", Severity.Info);
+     }
+     else Snackbar.Add(err ?? "Failed to cancel.", Severity.Error);
     }
 
     private Color GetTypeColor(string t) => t switch{

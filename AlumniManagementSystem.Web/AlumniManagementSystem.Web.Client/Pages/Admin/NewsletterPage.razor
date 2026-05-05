@@ -9,12 +9,15 @@
 
 <MudStack Spacing="4">
 
-    @* ── Header ── *@
+    @* Header *@
     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-wrap">
         <div>
             <MudText Typo="Typo.h5" Style="font-weight:700;letter-spacing:-0.02em;color:#111827">Newsletter</MudText>
             <MudText Typo="Typo.body2" Style="color:#6b7280">
-                @(_loading ? "Loading..." : $"{_newsletters.Count} newsletter(s) total")
+             @{
+               var nlWord= _newsletters.Count == 1 ? "newsletter" : "newsletters";
+              }
+             @(_loading ? "Loading..." : $"{_newsletters.Count} {nlWord} total")
             </MudText>
         </div>
         @if(Auth.IsAdmin){
@@ -27,7 +30,7 @@
         }
     </MudStack>
 
-    @* ── States ── *@
+    @* States *@
     @if(_notAdmin){
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Style="border-radius:12px">
             Admin access required.
@@ -176,7 +179,11 @@
                 <MudTextField @bind-Value="_dto.Content" Label="Content"
                               Variant="Variant.Outlined" Lines="8" Margin="Margin.Dense"
                               Required="true" RequiredError="Content is required"
-                              Placeholder="Write your newsletter content here..." />
+                              Placeholder="Write your newsletter content here..."
+                              HelperText="@($"{_dto.Content?.Length ?? 0}/5000")" 
+                              Validation="@((string v) => (v?.Length ?? 0) < 10 ? "Minimum 10 characters required" : null)"
+                              MaxLength="5000"
+                              Immediate="true"  />
 
                 <MudDivider />
 

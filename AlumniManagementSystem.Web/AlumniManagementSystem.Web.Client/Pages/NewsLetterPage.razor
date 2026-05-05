@@ -13,7 +13,10 @@
         <div>
             <MudText Typo="Typo.h5" Style="font-weight:700;letter-spacing:-0.02em;color:#111827">Newsletters</MudText>
             <MudText Typo="Typo.body2" Style="color:#6b7280">
-                @(_loading ? "Loading..." : $"{_newsletters.Count} newsletter(s) for you")
+                @{
+                  var nlWord= _newsletters.Count == 1 ? "newsletter" : "newsletters"; 
+                }
+                @(_loading ? "Loading..." : $"{_newsletters.Count} {nlWord} for you")
             </MudText>
         </div>
         <MudIcon Icon="@Icons.Material.Rounded.MarkEmailRead"

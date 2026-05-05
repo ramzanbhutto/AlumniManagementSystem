@@ -12,4 +12,5 @@ public interface IEventRepository{
   Task SaveChangesAsync();
   Task<EventRSVP?> GetRsvpAsync(Guid eventId, Guid alumniId);
   Task AddRsvpAsync(EventRSVP rsvp);
+  Task UpdateAsync(Event ev);
 }

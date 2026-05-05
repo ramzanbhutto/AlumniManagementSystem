@@ -107,7 +107,7 @@
                             </MudText>
 
                             @* Meta row *@
-                            <MudStack Row="true" Spacing="3" Class="flex-wrap">
+                            <MudStack Row="true" Spacing="5" Class="flex-wrap">
                                 @if(j.Location != null){
                                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                         <MudIcon Icon="@Icons.Material.Rounded.LocationOn"
@@ -159,7 +159,7 @@
 
 </MudStack>
 
-@* ── Post Job Dialog ── *@
+@* Post Job Dialog *@
 @if(_showCreate){
     <MudOverlay Visible="true" DarkBackground="true" ZIndex="1000" />
     <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1001;padding:1rem">
@@ -190,7 +190,11 @@
 
                     <MudTextField @bind-Value="_dto.Description" Label="Description"
                                   Variant="Variant.Outlined" Lines="3" Margin="Margin.Dense"
-                                  Required="true" RequiredError="Description is required" />
+                                  Required="true" RequiredError="Description is required"
+                                  HelperText="@($"{_dto.Description?.Length ?? 0}/5000")"
+                                  Validation="@((string v) => (v?.Length ?? 0) < 20 ? "Minimum 20 characters required" : null)"
+                                  MaxLength="5000"
+                                  Immediate="true" />
 
                     <MudGrid Spacing="2">
                         <MudItem xs="6">

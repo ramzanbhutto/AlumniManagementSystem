@@ -212,14 +212,32 @@
                 <MudTextField @bind-Value="_newAlumni.Email" Label="Email"
                               Variant="Variant.Outlined" Margin="Margin.Dense"
                               InputType="InputType.Email" 
-                              Required="true" RequiredError="Email is required!" />
+                              Required="true" RequiredError="Email is required!"
+                              Validation="@((string v) => !System.Text.RegularExpressions.Regex.IsMatch(v ?? "", @"^[^@\s]+@[^@\s]+\.[^@\s]+$") ? "Enter a valid email address" : null)" />
                 <MudTextField @bind-Value="_newAlumni.RollNumber" Label="Roll Number (e.g. 24P-3051)"
                               Variant="Variant.Outlined" Margin="Margin.Dense" 
                               Required="true" RequiredError="Roll Number is required!" />
-                <MudTextField @bind-Value="_newAlumni.Password" Label="Password"
-                              Variant="Variant.Outlined" Margin="Margin.Dense"
-                              InputType="InputType.Password" 
-                              Required="true" RequiredError="min length 6: 1 Small, 1 Capital, 1 number and 1 special character" />
+               <MudTextField @bind-Value="_newAlumni.Password" Label="Password"
+                             Variant="Variant.Outlined" Margin="Margin.Dense"
+                             InputType="@(_showPwd ? InputType.Text : InputType.Password)"
+                             Adornment="Adornment.End"
+                             AdornmentIcon="@(_showPwd ? Icons.Material.Rounded.VisibilityOff : Icons.Material.Rounded.Visibility)"
+                             OnAdornmentClick="@(() => _showPwd = !_showPwd)"
+                            @bind-Value:after="StateHasChanged" />
+
+                           @if(!string.IsNullOrEmpty(_newAlumni.Password)){
+                             var pwd= _newAlumni.Password;
+                            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:0.6rem 0.75rem;margin-top:-8px">
+                              <MudText Typo="Typo.caption" Style="color:#6b7280;font-weight:600;display:block;margin-bottom:4px">Password requirements</MudText>
+                              <MudStack Spacing="0">
+                                @PwdRule(pwd.Length >= 8,            "At least 8 characters")
+                                @PwdRule(pwd.Any(char.IsUpper),      "At least 1 uppercase letter")
+                                @PwdRule(pwd.Any(char.IsLower),      "At least 1 lowercase letter")
+                                @PwdRule(pwd.Any(char.IsDigit),      "At least 1 number")
+                                @PwdRule(pwd.Any(c => !char.IsLetterOrDigit(c)), "At least 1 special character")
+                              </MudStack>
+                            </div>
+                          } 
                 <MudTextField @bind-Value="_newAlumni.GraduationYear" Label="Graduation Year"
                               Variant="Variant.Outlined" Margin="Margin.Dense"
                               InputType="InputType.Number" Required="true" />
@@ -281,9 +299,10 @@
     private string _filterDept = "";
     private string _filterGender = "";
     private bool? _filterProfile = null;
-    private int _yearMin = 2015;
-    private int _yearMax = 2030;
+    private int _yearMin= 2015;
+    private int _yearMax= 2030;
     private RegisterDto _newAlumni = new();
+    private bool _showPwd= false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender){
         if(!firstRender) return;
@@ -352,4 +371,14 @@
         _showDelete = false;
         _deleteTarget = null;
     }
+
+    private RenderFragment PwdRule(bool met, string text) => __builder => {
+    <div style="display:flex;align-items:center;gap:6px;padding:2px 0">
+        <MudIcon Icon="@(met ? Icons.Material.Rounded.CheckCircle : Icons.Material.Rounded.RadioButtonUnchecked)"
+                 Style="@($"font-size:0.85rem;color:{(met ? "#10b981" : "#9ca3af")}")" />
+        <MudText Typo="Typo.caption" Style="@($"color:{(met ? "#10b981" : "#6b7280")};font-weight:{(met ? "600" : "400")}")">
+            @text
+        </MudText>
+    </div>;
+  };
 }

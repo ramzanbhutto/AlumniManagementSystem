@@ -14,8 +14,19 @@
         <div>
             <MudText Typo="Typo.h5" Style="font-weight:700;letter-spacing:-0.02em;color:#111827">Surveys</MudText>
             <MudText Typo="Typo.body2" Style="color:#6b7280">
-                @if(Auth.IsAdmin){ @($"{_surveys.Count} surveys total") }
-                else { @($"{_surveys.Count} active surveys") }
+              @{
+                 var activeCount= _surveys.Count(s => s.Status == "Active");
+                 var totalCount = _surveys.Count;
+                 var word= totalCount == 1 ? "survey" : "surveys";
+                 var activeWord= activeCount == 1 ? "survey" : "surveys";
+                }
+
+              @if(Auth.IsAdmin){
+                @($" {activeCount}/{totalCount} active {word}")
+              }
+              else{
+                @($"{activeCount} active {activeWord}")
+              }
             </MudText>
         </div>
         @if(Auth.IsAdmin){
@@ -541,6 +552,11 @@
         try{
             var endpoint = Auth.IsAdmin ? "api/surveys/all" : "api/surveys";
             _surveys = await Http.GetFromJsonAsync<List<SurveyDto>>(endpoint) ?? [];
+            var now = DateTime.UtcNow;
+            foreach(var s in _surveys){
+              if(s.Status == "Active" && s.Deadline.HasValue && s.Deadline.Value<now)
+              s.Status = "Closed";
+            }
         }
         catch{ _surveys = []; }
         _loading = false;
